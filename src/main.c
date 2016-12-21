@@ -391,7 +391,7 @@ int InitiateWUP(void)
 				if(iosuhaxMount)
 					__os_snprintf(ipaddress, sizeof(ipaddress), "YOUR IP: %u.%u.%u.%u:%i  (IOSUHAX SPEED BOOST)",(network_gethostip() >> 24) & 0xFF, (network_gethostip() >> 16) & 0xFF, (network_gethostip() >> 8) & 0xFF, (network_gethostip() >> 0) & 0xFF, 21);
 				else
-					__os_snprintf(ipaddress, sizeof(ipaddress), "YOUR IP: %u.%u.%u.%u:%i",(network_gethostip() >> 24) & 0xFF, (network_gethostip() >> 16) & 0xFF, (network_gethostip() >> 8) & 0xFF, (network_gethostip() >> 0) & 0xFF, 21);
+					__os_snprintf(ipaddress, sizeof(ipaddress), "YOUR IP: %u.%u.%u.%u:%i (NO IOSUHAX SPEED BOOST)",(network_gethostip() >> 24) & 0xFF, (network_gethostip() >> 16) & 0xFF, (network_gethostip() >> 8) & 0xFF, (network_gethostip() >> 0) & 0xFF, 21);
 				OSScreenPutFontEx(i, 0, 2,ipaddress);
 				OSScreenPutFontEx(i, 0, 4, lastFolder);
 				__os_snprintf(text, sizeof(text), "Install of title %08X-%08X ", (u32)(installedTitle >> 32), (u32)(installedTitle & 0xffffffff));
@@ -586,17 +586,59 @@ void InitiateFTP()
 
 }
 
+//just to be able to call async
+void someFunc(void *arg)
+{
+    (void)arg;
+}
+
+
+static int mcp_hook_fd = -1;
+int MCPHookOpen()
+{
+    //take over mcp thread
+    mcp_hook_fd = MCP_Open();
+    if(mcp_hook_fd < 0)
+        return -1;
+    IOS_IoctlAsync(mcp_hook_fd, 0x62, (void*)0, 0, (void*)0, 0, someFunc, (void*)0);
+    //let wupserver start up
+    sleep(1);
+    if(IOSUHAX_Open("/dev/mcp") < 0)
+    {
+        MCP_Close(mcp_hook_fd);
+        mcp_hook_fd = -1;
+        return -1;
+    }
+    return 0;
+}
+
+void MCPHookClose()
+{
+    if(mcp_hook_fd < 0)
+        return;
+    //close down wupserver, return control to mcp
+    IOSUHAX_Close();
+    //wait for mcp to return
+    sleep(1);
+    MCP_Close(mcp_hook_fd);
+    mcp_hook_fd = -1;
+}
+
 
 void MountSd()
 {
 	int res = IOSUHAX_Open(NULL);
     if(res < 0)
     {
+        /*res = MCPHookOpen();
+	    if (res >=0) 
+			goto iosuhax;*/
         mount_sd_fat("sd");
         VirtualMountDevice("sd:/");
     }
     else
     {
+		iosuhax:
         iosuhaxMount = 1;
         fatInitDefault();
         fsaFd = IOSUHAX_FSA_Open();
@@ -666,6 +708,8 @@ int Menu_Main(void)
     //!                    Enter main application                        *
     //!*******************************************************************
 
+	if (mcp_hook_fd>=0)
+		MCPHookClose();
     if(iosuhaxMount)
     {
         fatUnmount("sd"); 

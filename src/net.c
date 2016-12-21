@@ -271,13 +271,19 @@ s32 recv_to_file(s32 s, FILE *f) {
 		return -1;
 	set_blocking(s,true);
 	s32 bytes_read;
+	int error_count=0;
 	while (1) {
 	    do
 		{
 			bytes_read = recv(s, buf, NET_BUFFER_SIZE, 0);
-			usleep(1);
+			if(bytes_read<0)
+				error_count++;
+			if(error_count>200)
+				return -1;
+		    usleep(1000);
 		} while (bytes_read<0);
 		
+		error_count=0;
 		if(bytes_read==0)
 		{
 			free(buf);

@@ -94,7 +94,7 @@ EXPORT_DECL(int, MCP_InstallSetTargetDevice, unsigned int handle, int device);
 EXPORT_DECL(int, MCP_InstallSetTargetUsb, unsigned int handle, int device);
 EXPORT_DECL(int, MCP_GetLastRawError, void);
 EXPORT_DECL(int, IOS_IoctlvAsync, unsigned int fd, unsigned int command, int cnt_in, int cnt_out, void *ioctlv, void *ipc_callback, void *usrdata);
-
+EXPORT_DECL(int, IOS_IoctlAsync,int fd, unsigned int request, void *input_buffer,unsigned int input_buffer_len, void *output_buffer, unsigned int output_buffer_len, void *cb, void *cbarg);
 //!----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //! Memory functions
 //!----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -209,6 +209,7 @@ void InitOSFunctionPointers(void)
     OS_FIND_EXPORT(coreinit_handle, IOS_Ioctl);
     OS_FIND_EXPORT(coreinit_handle, IOS_Open);
     OS_FIND_EXPORT(coreinit_handle, IOS_Close);
+	OS_FIND_EXPORT(coreinit_handle, IOS_IoctlAsync);
 	
 }
 
