@@ -126,6 +126,7 @@ extern int (*OSScreenClearBufferEx)(unsigned int bufferNum, unsigned int temp);
 extern int (*OSScreenFlipBuffersEx)(unsigned int bufferNum);
 extern int (*OSScreenPutFontEx)(unsigned int bufferNum, unsigned int posX, unsigned int posY, const char * buffer);
 extern int (*OSScreenEnableEx)(unsigned int bufferNum, int enable);
+extern unsigned int (*OSScreenPutPixelEx)(unsigned int bufferNum, unsigned int posX, unsigned int posY, uint32_t color);
 
 //!----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //! MCP functions

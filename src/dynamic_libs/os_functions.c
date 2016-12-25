@@ -78,6 +78,7 @@ EXPORT_DECL(int, OSScreenClearBufferEx, unsigned int bufferNum, unsigned int tem
 EXPORT_DECL(int, OSScreenFlipBuffersEx, unsigned int bufferNum);
 EXPORT_DECL(int, OSScreenPutFontEx, unsigned int bufferNum, unsigned int posX, unsigned int posY, const char * buffer);
 EXPORT_DECL(int, OSScreenEnableEx, unsigned int bufferNum, int enable);
+EXPORT_DECL(unsigned int, OSScreenPutPixelEx, unsigned int bufferNum, unsigned int posX, unsigned int posY, uint32_t color);
 EXPORT_DECL(int, IOS_Ioctl,int fd, unsigned int request, void *input_buffer,unsigned int input_buffer_len, void *output_buffer, unsigned int output_buffer_len);
 EXPORT_DECL(int, IOS_Open,char *path, unsigned int mode);
 EXPORT_DECL(int, IOS_Close,int fd);
@@ -152,6 +153,7 @@ void InitOSFunctionPointers(void)
     OS_FIND_EXPORT(coreinit_handle, OSScreenFlipBuffersEx);
     OS_FIND_EXPORT(coreinit_handle, OSScreenPutFontEx);
     OS_FIND_EXPORT(coreinit_handle, OSScreenEnableEx);
+    OS_FIND_EXPORT(coreinit_handle, OSScreenPutPixelEx);
     //!----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     //! Thread functions
     //!----------------------------------------------------------------------------------------------------------------------------------------------------------------------------

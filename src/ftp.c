@@ -28,6 +28,7 @@ misrepresented as being the original software.
 #include <string.h>
 #include <sys/dir.h>
 #include <unistd.h>
+#include "background.h"
 #include "dynamic_libs/os_functions.h"
 #include "dynamic_libs/socket_functions.h"
 #include "dynamic_libs/os_functions.h"
@@ -677,8 +678,10 @@ static s32 process_command(client_t *client, char *cmd_line) {
 	}
 	OSScreenClearBufferEx(0, 0);
 	OSScreenClearBufferEx(1, 0);
-	OSScreenPutFontEx(0, 0, 0, "COMMUNICATING WITH THE APPLICATION...");
-	OSScreenPutFontEx(1, 0, 0, "COMMUNICATING WITH THE APPLICATION...");
+	DrawBackground(0);
+	DrawBackground(1);
+	OSScreenPutFontEx(0, 25, 13, "COMMUNICATING WITH THE APPLICATION...");
+	OSScreenPutFontEx(1, 13, 9, "COMMUNICATING WITH THE APPLICATION...");
 	OSScreenFlipBuffersEx(0);
 	OSScreenFlipBuffersEx(1);
 

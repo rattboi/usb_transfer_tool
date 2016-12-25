@@ -23,8 +23,11 @@
 #include "common/common.h"
 #include "ftp.h"
 #include "virtualpath.h"
+#include "vrt.h"
 #include "net.h"
+#include "background.h"
 #include <dirent.h>
+
 
 ///WUP
 #define TITLE_TEXT "-----WIIU USB HELPER TRANSFER TOOL-----"
@@ -54,6 +57,10 @@ static char lastFolder[256] = "";
 static char errorText1[128] = "";
 static char errorText2[128] = "";
 static bool folderSelect[1024] = {false};
+static bool firstLaunch=true;
+
+
+
 
 static int IosInstallCallback(unsigned int errorCode, unsigned int *priv_data)
 {
@@ -265,19 +272,28 @@ static void InstallTitle(void)
 		    for (int i = 0; i < 2; i++)
 		    {
 			OSScreenClearBufferEx(i, 0);
-
+			DrawBackground(i);
+			int x,y;
+			if(i==0)
+			{
+				x=0;y=9;
+			}
+			else
+			{
+				x=0;y=7;
+			}
 			OSScreenPutFontEx(i, 0, 0, TITLE_TEXT);
 			OSScreenPutFontEx(i, 0, 1, TITLE_TEXT2);
-			OSScreenPutFontEx(i, 0, 3, "Installing title...");
-			OSScreenPutFontEx(i, 0, 4, installFolder);
+			OSScreenPutFontEx(i, 0, y, "Installing title...");
+			OSScreenPutFontEx(i, 0, y+1, installFolder);
 
 			__os_snprintf(text, sizeof(text), "%08X%08X - %0.1f / %0.1f MB (%i%%)", titleIdHigh, titleIdLow, installedSize / (1024.0f * 1024.0f),
 				      totalSize / (1024.0f * 1024.0f), percent);
-			OSScreenPutFontEx(i, 0, 5, text);
+			OSScreenPutFontEx(i, 0, y+2, text);
 
 			if (percent == 100)
 			{
-			    OSScreenPutFontEx(i, 0, 6, "Please wait...");
+			    OSScreenPutFontEx(i, 0, y+3, "Please wait...");
 			}
 			// Flip buffers
 			OSScreenFlipBuffersEx(i);
@@ -337,6 +353,7 @@ static void InstallTitle(void)
 	OSFreeToSystem(mcpInstallInfo);
 }
 
+
 int InitiateWUP(void)
 {
     int update_screen = 1;
@@ -374,10 +391,12 @@ int InitiateWUP(void)
 	{
 	    loopCounter = 0;
 	    GetInstallDir(installFolder, sizeof(installFolder));
-	    OSScreenClearBufferEx(0, 0);
-	    OSScreenClearBufferEx(1, 0);
+	
+
 	    for (int i = 0; i < 2; i++)
 	    {
+		OSScreenClearBufferEx(i, 0);
+		DrawBackground(i);
 		char text[80];
 
 		OSScreenPutFontEx(i, 0, 0, TITLE_TEXT);
@@ -397,22 +416,26 @@ int InitiateWUP(void)
 		else if (installCompleted)
 		{
 		    __os_snprintf(text, sizeof(text), "%s failed.", text);
-		    OSScreenPutFontEx(i, 0, 3, text);
-		    OSScreenPutFontEx(i, 0, 5, errorText1);
-		    OSScreenPutFontEx(i, 0, 6, errorText2);
+		    OSScreenPutFontEx(0, 0, 3, text);
+		    OSScreenPutFontEx(0, 0, 5, errorText1);
+		    OSScreenPutFontEx(0, 0, 6, errorText2);
 		}
 
 		if (!doInstall)
 		{
-		    OSScreenPutFontEx(i, 0, 8, "Select a title to install (* = Selected)");
+			int x,y;
+			if(i==0)
+			{
+				x=0;y=10;
+			}
+			else
+			{
+				x=0;y=8;
+			}
+		    OSScreenPutFontEx(i, x, y, "Select a title to install (* = Selected)");
 		    __os_snprintf(text, sizeof(text), "%c  %s", folderSelect[dirNum] ? '*' : ' ', installFolder);
-		    OSScreenPutFontEx(i, 0, 9, text);
+		    OSScreenPutFontEx(i, x, y+1, text);
 
-		    OSScreenPutFontEx(i, 0, 11, "Press D-Pad U/D to change folder.");
-		    OSScreenPutFontEx(i, 0, 12, "Press D-Pad L/R to (*)select/unselect folder.");
-		    OSScreenPutFontEx(i, 0, 13, "Press + to select all folders, - to unselect all folders.");
-		    OSScreenPutFontEx(i, 0, 14, "Press X to install title(s) to USB storage.");
-		    OSScreenPutFontEx(i, 0, 15, "Press Y to remount the SD and rescan folders.");
 		}
 		else
 		{
@@ -422,7 +445,7 @@ int InitiateWUP(void)
 		    OSScreenPutFontEx(i, 0, 10, "Press B-Button to Cancel");
 		}
 
-		OSScreenPutFontEx(i, 0, 17, "Press HOME-Button to return to HBL.");
+		
 	    }
 
 	    // Flip buffers
@@ -570,7 +593,6 @@ int InitiateWUP(void)
 
 void InitiateFTP()
 {
-
     serverSocket = create_server(21);
 }
 
@@ -613,12 +635,10 @@ void MCPHookClose()
 
 void MountSd()
 {
+	
     int res = IOSUHAX_Open(NULL);
     if (res < 0)
     {
-	/*res = MCPHookOpen();
-	    if (res >=0) 
-			goto iosuhax;*/
 	mount_sd_fat("sd");
 	VirtualMountDevice("sd:/");
     }
@@ -649,7 +669,6 @@ int Menu_Main(void)
     //!                    Initialize heap memory                        *
     //!*******************************************************************
 
-    //! We don't need bucket and MEM1 memory so no need to initialize
     memoryInitialize();
 
     //!*******************************************************************
@@ -659,15 +678,17 @@ int Menu_Main(void)
     // Prepare screen
     int screen_buf0_size = 0;
     int screen_buf1_size = 0;
-
-    // Init screen and screen buffers
+	// Init screen and screen buffers
     OSScreenInit();
     screen_buf0_size = OSScreenGetBufferSizeEx(0);
     screen_buf1_size = OSScreenGetBufferSizeEx(1);
 
-    unsigned char *screenBuffer = MEM1_alloc(screen_buf0_size + screen_buf1_size, 0x40);
+    unsigned char *screenBuffer = MEM1_alloc(screen_buf0_size + screen_buf1_size, 0x100);
+
     OSScreenSetBufferEx(0, screenBuffer);
     OSScreenSetBufferEx(1, (screenBuffer + screen_buf0_size));
+
+
     OSScreenEnableEx(0, 1);
     OSScreenEnableEx(1, 1);
 
@@ -679,9 +700,11 @@ int Menu_Main(void)
     OSScreenFlipBuffersEx(0);
     OSScreenFlipBuffersEx(1);
     MountSd();
-    if (!doInstall)
-	InitiateFTP();
+	LoadPictures();
+	firstLaunch=false;
+    if (!doInstall)	InitiateFTP();
     int exit_code = InitiateWUP();
+
 
     cleanup_ftp();
     if (serverSocket >= 0)
@@ -690,9 +713,7 @@ int Menu_Main(void)
     //!*******************************************************************
     //!                    Enter main application                        *
     //!*******************************************************************
-
-    if (mcp_hook_fd >= 0)
-	MCPHookClose();
+	
     if (iosuhaxMount)
     {
 	fatUnmount("sd");
@@ -703,16 +724,19 @@ int Menu_Main(void)
     }
     else
     {
-	unmount_sd_fat("sd:/");
+	unmount_sd_fat("sd");
     }
 
-    MEM1_free(screenBuffer);
+	free(picDRCBuf);
+	free(picTVBuf);
+	MEM1_free(screenBuffer);
+	
     screenBuffer = NULL;
 
-    UnmountVirtualPaths();
-
-    memoryRelease();
-
+	UnmountVirtualPaths();
+	memoryRelease();
+   
+	
     if (exit_code == EXIT_RELAUNCH_ON_LOAD)
     {
 	SYSLaunchMenu();
@@ -726,4 +750,5 @@ int Menu_Main(void)
     }
 
     return EXIT_SUCCESS;
+	 
 }
