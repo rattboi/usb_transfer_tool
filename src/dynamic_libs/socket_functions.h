@@ -47,6 +47,7 @@ extern "C" {
 #define SO_REUSEADDR    0x0004
 #define SO_NONBLOCK     0x1016
 #define SO_MYADDR       0x1013
+#define	SO_BROADCAST	0x0020	
 
 #define ENODATA         1
 #define EISCONN         3
