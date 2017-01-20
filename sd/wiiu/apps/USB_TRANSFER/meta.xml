@@ -2,7 +2,7 @@
 <app version="1">
   <name>WIIU USB Helper Transfer Tool</name>
   <coder>Hikari06</coder>
-  <version>0.3</version>
+  <version>0.4</version>
   <release_date>201612260045</release_date>
   <short_description>Transfer games downloaded from WIIU U USB Helper</short_description>
   <long_description>WIIU USB Helper Transfer Tool is a mod of both FTPIIU everywhere and WUP Installer.

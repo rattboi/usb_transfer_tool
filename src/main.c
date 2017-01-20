@@ -57,41 +57,37 @@ static char errorText1[128] = "";
 static char errorText2[128] = "";
 static bool folderSelect[1024] = {false};
 static bool firstLaunch = true;
-s32 BroadCastSocket=0;
-struct sockaddr_in broadcastAddr; 
-    
+static int update_screen=1;
+s32 BroadCastSocket = 0;
+struct sockaddr_in broadcastAddr;
 
 static s32 CreateBroadCastSocket()
 {
-    s32 sock;                        
- 
-    unsigned short broadcastPort=14521;    
-    int broadcastPermission=1;         
-   
+    s32 sock;
+
+    unsigned short broadcastPort = 14521;
+    int broadcastPermission = 1;
+
     if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
         return 0;
 
- 
-    if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (void *) &broadcastPermission, 
-          sizeof(broadcastPermission)) < 0)
+    if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (void *)&broadcastPermission,
+                   sizeof(broadcastPermission)) < 0)
         return 0;
 
-  
-    memset(&broadcastAddr, 0, sizeof(broadcastAddr));  
-    broadcastAddr.sin_family = AF_INET;               
+    memset(&broadcastAddr, 0, sizeof(broadcastAddr));
+    broadcastAddr.sin_family = AF_INET;
     broadcastAddr.sin_addr.s_addr = 4294967295;
-    broadcastAddr.sin_port = htons(broadcastPort);         
+    broadcastAddr.sin_port = htons(broadcastPort);
 
-	return sock;
-
-
+    return sock;
 }
 
 static void SendBeacon()
 {
-   char *sendString="HELLO FROM WIIU!";                 
-   unsigned int sendStringLen= strlen(sendString);      
-   sendto(BroadCastSocket, sendString, sendStringLen, 0, (struct sockaddr *)  &broadcastAddr, sizeof(broadcastAddr));
+    char *sendString = "HELLO FROM WIIU!";
+    unsigned int sendStringLen = strlen(sendString);
+    sendto(BroadCastSocket, sendString, sendStringLen, 0, (struct sockaddr *)&broadcastAddr, sizeof(broadcastAddr));
 }
 
 static int IosInstallCallback(unsigned int errorCode, unsigned int *priv_data)
@@ -158,6 +154,28 @@ static void setAllFolderSelect(bool state)
             closedir(dirPtr);
         }
     }
+}
+
+static void RefreshSD()
+{
+    if (!iosuhaxMount)
+    {
+        unmount_sd_fat("sd");
+        usleep(50000);
+        mount_sd_fat("sd");
+    }
+    else
+    {
+        fatUnmount("sd");
+        usleep(50000);
+        fatInitDefault();
+        VirtualMountDevice("sd:/");
+    }
+
+    setAllFolderSelect(false);
+    dirNum = 0;
+    update_screen = 1;
+    usleep(50000);
 }
 
 static int getNextSelectedFolder(void)
@@ -246,9 +264,9 @@ static void InstallTitle(void)
         }
 
         if (spoofFiles || (titleIdHigh == 0x0005000E) // game update
-                || (titleIdHigh == 0x00050000)	    // game
-                || (titleIdHigh == 0x0005000C)	    // DLC
-                || (titleIdHigh == 0x00050002))	   // Demo
+            || (titleIdHigh == 0x00050000)            // game
+            || (titleIdHigh == 0x0005000C)            // DLC
+            || (titleIdHigh == 0x00050002))           // Demo
         {
             installedTitle = ((u64)titleIdHigh << 32ULL) | titleIdLow;
 
@@ -389,7 +407,7 @@ static void InstallTitle(void)
 
 int InitiateWUP(void)
 {
-    int update_screen = 1;
+    update_screen = 1;
     int delay = 0;
     int vpadError = -1;
     VPADData vpad_data;
@@ -399,9 +417,9 @@ int InitiateWUP(void)
 
     // in case we are not in mii maker but in system menu we start the installation
     if (currenTitleId != 0x000500101004A200 && // mii maker eur
-            currenTitleId != 0x000500101004A100 && // mii maker usa
-            currenTitleId != 0x000500101004A000 && // mii maker jpn
-            !hblChannelLaunch)		       // HBL channel
+        currenTitleId != 0x000500101004A100 && // mii maker usa
+        currenTitleId != 0x000500101004A000 && // mii maker jpn
+        !hblChannelLaunch)                     // HBL channel
     {
         InstallTitle();
         return EXIT_RELAUNCH_ID_ON_LOAD;
@@ -419,18 +437,18 @@ int InitiateWUP(void)
     {
         loopCounter++;
         process_ftp_events(serverSocket);
-   
+
         // print to TV and DRC
         if (update_screen || loopCounter > 150)
         {
             loopCounter = 0;
             GetInstallDir(installFolder, sizeof(installFolder));
-			SendBeacon();
+            SendBeacon();
             for (int i = 0; i < 2; i++)
             {
                 OSScreenClearBufferEx(i, 0);
                 DrawBackground(i);
-			   
+
                 char text[80];
 
                 OSScreenPutFontEx(i, 0, 0, TITLE_TEXT);
@@ -527,24 +545,7 @@ int InitiateWUP(void)
             {
                 if (!yPressed)
                 {
-                    if (!iosuhaxMount)
-                    {
-                        unmount_sd_fat("sd");
-                        usleep(50000);
-                        mount_sd_fat("sd");
-                    }
-                    else
-                    {
-                        fatUnmount("sd");
-                        usleep(50000);
-                        fatInitDefault();
-                        VirtualMountDevice("sd:/");
-                    }
-
-                    setAllFolderSelect(false);
-                    dirNum = 0;
-                    update_screen = 1;
-                    usleep(50000);
+                    RefreshSD();
                 }
                 yPressed = 1;
             }
@@ -627,6 +628,7 @@ int InitiateWUP(void)
 void InitiateFTP()
 {
     serverSocket = create_server(21);
+    SetREFRECallBack(&RefreshSD);
 }
 
 //just to be able to call async
@@ -677,7 +679,7 @@ void MountSd()
     }
     else
     {
-iosuhax:
+    iosuhax:
         iosuhaxMount = 1;
         fatInitDefault();
         fsaFd = IOSUHAX_FSA_Open();
