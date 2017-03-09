@@ -101,7 +101,7 @@ void MountVirtualDevices()
     //VirtualMountDevice("storage_odd_content2:/");
     //VirtualMountDevice("storage_slc:/");
     //VirtualMountDevice("storage_mlc:/");
-    //VirtualMountDevice("storage_usb:/");
+    VirtualMountDevice("storage_usb:/");
     //VirtualMountDevice("usb:/");
 }
 

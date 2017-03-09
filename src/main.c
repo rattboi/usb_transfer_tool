@@ -42,7 +42,7 @@
 static int doInstall = 0;
 int serverSocket = 0;
 int fsaFd = -1;
-int iosuhaxMount = 0;
+bool iosuhaxMount = false;
 static int installCompleted = 0;
 static int installSuccess = 0;
 static int installToUsb = 0;
@@ -671,19 +671,23 @@ void MCPHookClose()
 void MountSd()
 {
 
+    iosuhaxMount=false;
     int res = IOSUHAX_Open(NULL);
     if (res < 0)
     {
         mount_sd_fat("sd");
-        VirtualMountDevice("sd:/");
+        VirtualMountDevice("sd:/");  
     }
     else
     {
-    iosuhax:
-        iosuhaxMount = 1;
+        iosuhaxMount = true;
         fatInitDefault();
         fsaFd = IOSUHAX_FSA_Open();
+        //mount_fs("storage_mlc", fsaFd, NULL, "/vol/storage_mlc01");
+        mount_fs("storage_usb", fsaFd, NULL, "/vol/storage_usb01");
         VirtualMountDevice("sd:/");
+        VirtualMountDevice("storage_usb:/");
+        //VirtualMountDevice("storage_mlc:/");
     }
 }
 
@@ -746,7 +750,7 @@ int Menu_Main(void)
         network_close(serverSocket);
 
     //!*******************************************************************
-    //!                    Enter main application                        *
+    //!                    Exit main application                        *
     //!*******************************************************************
 
     if (iosuhaxMount)
@@ -754,6 +758,8 @@ int Menu_Main(void)
         fatUnmount("sd");
         IOSUHAX_sdio_disc_interface.shutdown();
         IOSUHAX_usb_disc_interface.shutdown();
+        unmount_fs("storage_usb");
+        //unmount_fs("storage_mlc");
         IOSUHAX_FSA_Close(fsaFd);
         IOSUHAX_Close();
     }

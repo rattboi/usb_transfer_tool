@@ -34,7 +34,7 @@ misrepresented as being the original software.
 #include "dynamic_libs/socket_functions.h"
 #include "net.h"
 
-#define MAX_NET_BUFFER_SIZE (128 * 1024)
+#define MAX_NET_BUFFER_SIZE (64*1024)
 #define MIN_NET_BUFFER_SIZE 4096
 #define FREAD_BUFFER_SIZE (64 * 1024)
 
@@ -282,12 +282,12 @@ end:
     return result;
 }
 
-s32 recv_to_file(s32 s, FILE *f)
+s32 recv_to_file(s32 socket, FILE *f)
 {
     char *buf = (char *)malloc(NET_BUFFER_SIZE);
     if (!buf)
 	return -1;
-    set_blocking(s, true);
+    set_blocking(socket, true);
     s32 bytes_read;
     int error_count = 0;
 
@@ -295,7 +295,7 @@ s32 recv_to_file(s32 s, FILE *f)
     {
 	do
 	{
-	    bytes_read = recv(s, buf, NET_BUFFER_SIZE, 0);
+	    bytes_read = recv(socket, buf, NET_BUFFER_SIZE, 0);
 	    if (bytes_read < 0)
 		error_count++;
 	    if (error_count > 200)
@@ -304,6 +304,7 @@ s32 recv_to_file(s32 s, FILE *f)
 	} while (bytes_read < 0);
 
 	error_count = 0;
+
 	if (bytes_read == 0)
 	{
 	    free(buf);
@@ -318,5 +319,6 @@ s32 recv_to_file(s32 s, FILE *f)
 	    return -1;
 	}
     }
+
     return -1;
 }
