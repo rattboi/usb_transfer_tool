@@ -59,6 +59,7 @@ typedef s32 (*data_connection_callback)(s32 data_socket, void *arg);
 
 
 static RefreshCallback refreshCallback;
+static InstallCallback installCallback;
 
 struct client_struct
 {
@@ -187,6 +188,11 @@ static u32 split(char *s, char sep, u32 maxsplit, char *result[])
 void SetREFRECallBack(RefreshCallback callBack)
 {
     refreshCallback = callBack;
+}
+
+void SetINSTCallBack(InstallCallback callBack)
+{
+    installCallback=callBack;
 }
 
 static s32 ftp_USER(client_t *client, char *username UNUSED)
@@ -377,6 +383,16 @@ static s32 ftp_REFRE(client_t *client, char *rest UNUSED)
 {
     refreshCallback();
 }
+
+
+
+static s32 ftp_INST(client_t *client, char *rest UNUSED)
+{
+    installCallback(rest);
+    return write_reply(client, 200, "Ok");
+}
+
+
 
 static s32 ftp_PASV(client_t *client, char *rest UNUSED)
 {
@@ -802,13 +818,13 @@ static const char *authenticated_commands[] = {
     "SIZE", "PASV", "PORT", "TYPE", "SYST", "MODE",
     "RETR", "STOR", "APPE", "REST", "DELE", "MKD",
     "RMD", "RNFR", "RNTO", "NLST", "QUIT", "REIN",
-    "SITE", "NOOP", "ALLO", "REFRE", NULL};
+    "SITE", "NOOP", "ALLO", "REFRE","INST", NULL};
 static const ftp_command_handler authenticated_handlers[] = {
     ftp_USER, ftp_PASS, ftp_LIST, ftp_PWD, ftp_CWD, ftp_CDUP,
     ftp_SIZE, ftp_PASV, ftp_PORT, ftp_TYPE, ftp_SYST, ftp_MODE,
     ftp_RETR, ftp_STOR, ftp_APPE, ftp_REST, ftp_DELE, ftp_MKD,
     ftp_DELE, ftp_RNFR, ftp_RNTO, ftp_NLST, ftp_QUIT, ftp_REIN,
-    ftp_SITE, ftp_NOOP, ftp_SUPERFLUOUS, ftp_REFRE, ftp_UNKNOWN};
+    ftp_SITE, ftp_NOOP, ftp_SUPERFLUOUS, ftp_REFRE,ftp_INST, ftp_UNKNOWN};
 
 /*
 	returns negative to signal an error that requires closing the connection

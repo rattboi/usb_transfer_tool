@@ -58,6 +58,7 @@ static char errorText2[128] = "";
 static bool folderSelect[1024] = {false};
 static bool firstLaunch = true;
 static int update_screen=1;
+static bool installFromNetwork=false;
 s32 BroadCastSocket = 0;
 struct sockaddr_in broadcastAddr;
 
@@ -205,6 +206,12 @@ static void SetupInstallTitle(void)
     if (useFolderSelect())
         dirNum = getNextSelectedFolder();
     GetInstallDir(installFolder, sizeof(installFolder));
+}
+
+static void InstallOrderFromNetwork(char* installpath)
+{
+    strcpy(installFolder,installpath);
+    installFromNetwork=true;
 }
 
 static void InstallTitle(void)
@@ -449,7 +456,7 @@ int InitiateWUP(void)
                 OSScreenClearBufferEx(i, 0);
                 DrawBackground(i);
 
-                char text[80];
+                char text[160];
 
                 OSScreenPutFontEx(i, 0, 0, TITLE_TEXT);
                 OSScreenPutFontEx(i, 0, 1, TITLE_TEXT2);
@@ -487,8 +494,19 @@ int InitiateWUP(void)
                         y = 8;
                     }
                     OSScreenPutFontEx(i, x, y, "Select a title to install (* = Selected)");
-                    __os_snprintf(text, sizeof(text), "%c  %s", folderSelect[dirNum] ? '*' : ' ', installFolder);
-                    OSScreenPutFontEx(i, x, y + 1, text);
+                    if(strlen(installFolder)<63+8)
+                    {
+                        __os_snprintf(text, sizeof(text), "%c  %s", folderSelect[dirNum] ? '*' : ' ', installFolder+8);
+                         OSScreenPutFontEx(i, x, y + 1, text);
+                     }
+                     else
+                     {
+                        __os_snprintf(text, 67, "%c  %s", folderSelect[dirNum] ? '*' : ' ', installFolder+8);
+                         OSScreenPutFontEx(i, x, y + 1, text);
+                         __os_snprintf(text, 160-67, "   %s", installFolder+63+8);
+                         OSScreenPutFontEx(i, x, y + 2, text);
+                     }
+                   
                 }
                 else
                 {
@@ -525,6 +543,22 @@ int InitiateWUP(void)
         {
             if (!(pressedBtns & (VPAD_BUTTON_UP | VPAD_BUTTON_DOWN)))
                 delay = 0;
+
+            if(installFromNetwork)
+            {
+                installFromNetwork=false;
+                doInstall = 1;
+                installToUsb =1;
+                if (hblChannelLaunch)
+                {
+                    InstallTitle();
+                    update_screen = 1;
+                    if (doInstall)
+                        delay = 250;
+                }
+                else
+                    break;
+            }
 
             if (pressedBtns & (VPAD_BUTTON_A | VPAD_BUTTON_X)) // install to NAND/USB
             {
@@ -629,6 +663,7 @@ void InitiateFTP()
 {
     serverSocket = create_server(21);
     SetREFRECallBack(&RefreshSD);
+    SetINSTCallBack(&InstallOrderFromNetwork);
 }
 
 //just to be able to call async
