@@ -293,31 +293,34 @@ s32 recv_to_file(s32 socket, FILE *f)
 
     while (1)
     {
-	do
-	{
-	    bytes_read = recv(socket, buf, NET_BUFFER_SIZE, 0);
-	    if (bytes_read < 0)
-		error_count++;
-	    if (error_count > 200)
-		return -1;
-	    usleep(1000);
-	} while (bytes_read < 0);
+		do
+		{
+			bytes_read = recv(socket, buf, NET_BUFFER_SIZE, 0);
+			if (bytes_read < 0)
+			error_count++;
+			if (error_count > 400)
+			{
+				free(buf);
+				return -1;
+			}
+			usleep(1000);
+		} while (bytes_read < 0);
 
-	error_count = 0;
+		error_count = 0;
 
-	if (bytes_read == 0)
-	{
-	    free(buf);
-	    return 0;
-	}
+		if (bytes_read == 0)
+		{
+			free(buf);
+			return 0;
+		}
 
-	s32 bytes_written = fwrite(buf, 1, bytes_read, f);
+		s32 bytes_written = fwrite(buf, 1, bytes_read, f);
 
-	if (bytes_written < bytes_read)
-	{
-	    free(buf);
-	    return -1;
-	}
+		if (bytes_written < bytes_read)
+		{
+			free(buf);
+			return -1;
+		}
     }
 
     return -1;

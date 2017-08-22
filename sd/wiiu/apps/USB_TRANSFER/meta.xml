@@ -2,8 +2,8 @@
 <app version="1">
   <name>WIIU USB Helper Transfer Tool</name>
   <coder>Hikari06</coder>
-  <version>0.6</version>
-  <release_date>201703192124</release_date>
+  <version>0.7</version>
+  <release_date>201708221546</release_date>
   <short_description>Transfer games downloaded from WIIU U USB Helper</short_description>
   <long_description>WIIU USB Helper Transfer Tool is a mod of both FTPIIU everywhere and WUP Installer.
   It enables you to receive games downloaded with WII U USB Helper and install them  right away.
@@ -14,4 +14,5 @@
   http://application.wiiuusbhelper.com/transfer/background.rar
   </long_description>
   <category>tool</category>
+   <url>https://github.com/Kazegaya/usb_transfer_tool</url>
 </app>

@@ -6,13 +6,11 @@
 #include "system/memory.h"
 
 #define TV_WIDTH 1280
-#define DRC_WIDTH  854
+#define DRC_WIDTH 854
 #define TV_HEIGHT 720
 #define DRC_HEIGHT 480
 
-
 const int SIZES[][2] = {{TV_WIDTH, TV_HEIGHT}, {DRC_WIDTH, DRC_HEIGHT}};
-
 
 u8 *picTVBuf = NULL;
 u8 *picDRCBuf = NULL;
@@ -44,7 +42,6 @@ void DrawBackground(int screen)
     const char a = 255;    //alpha ne pas changer la valeur
     unsigned int pos = 18; //saut de l'entete du header TGA
 
-    
     u8 *buffer = (screen == 0 ? picTVBuf : picDRCBuf);
 
     if (buffer == NULL)
