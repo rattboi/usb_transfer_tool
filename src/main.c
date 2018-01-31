@@ -330,15 +330,16 @@ static void InstallTitle(void)
                     {
                         OSScreenClearBufferEx(i, 0);
                         DrawBackground(i);
-                        int x, y;
+//                        int x, y;
+                        int y;
                         if (i == 0)
                         {
-                            x = 0;
+//                            x = 0;
                             y = 9;
                         }
                         else
                         {
-                            x = 0;
+//                            x = 0;
                             y = 7;
                         }
                         OSScreenPutFontEx(i, 0, 0, TITLE_TEXT);
@@ -412,7 +413,7 @@ static void InstallTitle(void)
         OSFreeToSystem(mcpInstallInfo);
 }
 
-int InitiateWUP(void)
+unsigned int InitiateWUP(void)
 {
     update_screen = 1;
     int delay = 0;
@@ -778,7 +779,7 @@ int Menu_Main(void)
     firstLaunch = false;
     if (!doInstall)
         InitiateFTP();
-    int exit_code = InitiateWUP();
+    unsigned int exit_code = InitiateWUP();
 
     cleanup_ftp();
     if (serverSocket >= 0)

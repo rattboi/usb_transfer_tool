@@ -19,7 +19,9 @@ u8 *LoadPicture(char *name, u32 size)
 {
     u8 *buf = NULL;
     u32 fileSize = 0;
-    if (LoadFileToMem(name, &buf, &fileSize) < size)
+
+    LoadFileToMem(name, &buf, &fileSize);
+    if (fileSize < size)
     {
         free(buf);
         return NULL;
@@ -28,7 +30,7 @@ u8 *LoadPicture(char *name, u32 size)
     return buf;
 }
 
-int LoadPictures()
+void LoadPictures()
 {
     picTVBuf = LoadPicture("sd://res/tvBack.tga", TV_WIDTH * TV_HEIGHT * 3 + 18);
     picDRCBuf = LoadPicture("sd://res/drcBack.tga", DRC_WIDTH * DRC_HEIGHT * 3 + 18);

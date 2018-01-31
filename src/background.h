@@ -12,7 +12,7 @@ extern u8 *picTVBuf;
 extern u8 *picDRCBuf;
 
 u8* LoadPicture(char* name, u32 size);
-int LoadPictures();
+void LoadPictures();
 
 void DrawBackground(int screen);
 

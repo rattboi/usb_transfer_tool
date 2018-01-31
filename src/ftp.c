@@ -381,6 +381,7 @@ static s32 ftp_SIZE(client_t *client, char *path)
 static s32 ftp_REFRE(client_t *client, char *rest UNUSED)
 {
     refreshCallback();
+    return write_reply(client, 200, "Ok");
 }
 
 static s32 ftp_INST(client_t *client, char *rest UNUSED)
@@ -417,8 +418,8 @@ static s32 ftp_PASV(client_t *client, char *rest UNUSED)
     char reply[49];
     u16 port = bindAddress.sin_port;
     u32 ip = network_gethostip();
-    struct in_addr addr;
-    addr.s_addr = ip;
+    //struct in_addr addr;
+    //addr.s_addr = ip;
     //console_printf("Listening for data connections at %s:%u...\n", inet_ntoa(addr), port);
     sprintf(reply, "Entering Passive Mode (%u,%u,%u,%u,%u,%u).", (ip >> 24) & 0xff, (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff, (port >> 8) & 0xff, port & 0xff);
     return write_reply(client, 227, reply);
@@ -660,7 +661,7 @@ static s32 ftp_STOR(client_t *client, char *path)
         fd = fileno(f);
     if (f && client->restart_marker && lseek(fd, client->restart_marker, SEEK_SET) != client->restart_marker)
     {
-        s32 lseek_error = errno;
+//        s32 lseek_error = errno;
         fclose(f);
         client->restart_marker = 0;
         return write_reply(client, 550, "ftp_STOR unable to open file");
@@ -698,7 +699,7 @@ static s32 ftp_SITE_LOADER(client_t *client, char *rest UNUSED)
 static s32 ftp_SITE_CLEAR(client_t *client, char *rest UNUSED)
 {
     s32 result = write_reply(client, 200, "Cleared.");
-    u32 i;
+    //u32 i;
     //for (i = 0; i < 18; i++) console_printf("\n");
     //console_printf("\x1b[2;0H");
     return result;
