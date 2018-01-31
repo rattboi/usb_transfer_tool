@@ -114,6 +114,7 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 # build a list of library paths
 #---------------------------------------------------------------------------------
 export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib) \
+					-L$(LIBOGC_LIB) \
 					-L$(PORTLIBS)/lib
 
 export OUTPUT	:=	$(CURDIR)/$(TARGET)
@@ -140,8 +141,6 @@ DEPENDS	:=	$(OFILES:.o=.d)
 $(OUTPUT).elf:  $(OFILES)
 
 #---------------------------------------------------------------------------------
-# This rule links in binary data with the .jpg extension
-#---------------------------------------------------------------------------------
 %.elf: link.ld $(OFILES)
 	@echo "linking ... $(TARGET).elf"
 	$(Q)$(LD) -n -T $^ $(LDFLAGS) -o ../$(BUILD_DBG).elf  $(LIBPATHS) $(LIBS)
@@ -150,9 +149,9 @@ $(OUTPUT).elf:  $(OFILES)
 ../data/loader.bin:
 	$(MAKE) -C ../loader clean
 	$(MAKE) -C ../loader
+
 #---------------------------------------------------------------------------------
 %.a:
-#---------------------------------------------------------------------------------
 	@echo $(notdir $@)
 	@rm -f $@
 	@$(AR) -rc $@ $^

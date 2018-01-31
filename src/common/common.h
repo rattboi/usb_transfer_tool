@@ -1,5 +1,5 @@
 #ifndef COMMON_H
-#define	COMMON_H
+#define COMMON_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,5 +32,5 @@ extern "C" {
 }
 #endif
 
-#endif	/* COMMON_H */
+#endif /* COMMON_H */
 

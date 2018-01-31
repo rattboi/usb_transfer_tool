@@ -18,13 +18,13 @@ extern "C" {
                                         :"memory", "ctr", "lr", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"     \
                                         );
 
-#define LIMIT(x, min, max)																	\
-	({																						\
-		typeof( x ) _x = x;																	\
-		typeof( min ) _min = min;															\
-		typeof( max ) _max = max;															\
-		( ( ( _x ) < ( _min ) ) ? ( _min ) : ( ( _x ) > ( _max ) ) ? ( _max) : ( _x ) );	\
-	})
+#define LIMIT(x, min, max)                                                                  \
+    ({                                                                                      \
+        typeof( x ) _x = x;                                                                 \
+        typeof( min ) _min = min;                                                           \
+        typeof( max ) _max = max;                                                           \
+        ( ( ( _x ) < ( _min ) ) ? ( _min ) : ( ( _x ) > ( _max ) ) ? ( _max) : ( _x ) );    \
+    })
 
 #define DegToRad(a)   ( (a) *  0.01745329252f )
 #define RadToDeg(a)   ( (a) * 57.29577951f )

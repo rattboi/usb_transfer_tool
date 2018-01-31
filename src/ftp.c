@@ -108,7 +108,7 @@ static bool compare_ftp_password(char *password_attempt)
 }
 
 /*
-	TODO: support multi-line reply
+    TODO: support multi-line reply
 */
 static s32 write_reply(client_t *client, u16 code, char *msg)
 {
@@ -133,8 +133,8 @@ static void close_passive_socket(client_t *client)
 }
 
 /*
-	result must be able to hold up to maxsplit+1 null-terminated strings of length strlen(s)
-	returns the number of strings stored in the result array (up to maxsplit+1)
+    result must be able to hold up to maxsplit+1 null-terminated strings of length strlen(s)
+    returns the number of strings stored in the result array (up to maxsplit+1)
 */
 static u32 split(char *s, char sep, u32 maxsplit, char *result[])
 {
@@ -552,7 +552,7 @@ static s32 send_list(s32 data_socket, DIR_P *iter)
 
         char timestamp[13];
         strftime(timestamp, sizeof(timestamp), "%b %d  %Y", localtime(&mtime));
-        snprintf(line, sizeof(line), "%crwxr-xr-x	1 0		0	 %10llu %s %s\r\n", (dirent->d_type & DT_DIR) ? 'd' : '-', size, timestamp, dirent->d_name);
+        snprintf(line, sizeof(line), "%crwxr-xr-x      1 0             0        %10llu %s %s\r\n", (dirent->d_type & DT_DIR) ? 'd' : '-', size, timestamp, dirent->d_name);
         if ((result = send_exact(data_socket, line, strlen(line))) < 0)
         {
             break;
@@ -706,8 +706,8 @@ static s32 ftp_SITE_CLEAR(client_t *client, char *rest UNUSED)
 }
 
 /*
-	This is implemented as a no-op to prevent some FTP clients
-	from displaying skip/abort/retry type prompts.
+    This is implemented as a no-op to prevent some FTP clients
+    from displaying skip/abort/retry type prompts.
 */
 static s32 ftp_SITE_CHMOD(client_t *client, char *rest UNUSED)
 {
@@ -823,7 +823,7 @@ static const ftp_command_handler authenticated_handlers[] = {
     ftp_SITE, ftp_NOOP, ftp_SUPERFLUOUS, ftp_REFRE, ftp_INST, ftp_UNKNOWN};
 
 /*
-	returns negative to signal an error that requires closing the connection
+    returns negative to signal an error that requires closing the connection
 */
 static s32 process_command(client_t *client, char *cmd_line)
 {

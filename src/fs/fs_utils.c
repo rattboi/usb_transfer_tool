@@ -51,29 +51,29 @@ int UmountFS(void *pClient, void *pCmd, const char *mountPath)
 int LoadFileToMem(const char *filepath, u8 **inbuffer, u32 *size)
 {
     //! always initialze input
-	*inbuffer = NULL;
+    *inbuffer = NULL;
     if(size)
         *size = 0;
 
     int iFd = open(filepath, O_RDONLY);
-	if (iFd < 0)
-		return -1;
+    if (iFd < 0)
+        return -1;
 
-	u32 filesize = lseek(iFd, 0, SEEK_END);
+    u32 filesize = lseek(iFd, 0, SEEK_END);
     lseek(iFd, 0, SEEK_SET);
 
-	u8 *buffer = (u8 *) malloc(filesize);
-	if (buffer == NULL)
-	{
+    u8 *buffer = (u8 *) malloc(filesize);
+    if (buffer == NULL)
+    {
         close(iFd);
-		return -2;
-	}
+        return -2;
+    }
 
     u32 blocksize = 0x4000;
     u32 done = 0;
     int readBytes = 0;
 
-	while(done < filesize)
+    while(done < filesize)
     {
         if(done + blocksize > filesize) {
             blocksize = filesize - done;
@@ -86,97 +86,97 @@ int LoadFileToMem(const char *filepath, u8 **inbuffer, u32 *size)
 
     close(iFd);
 
-	if (done != filesize)
-	{
-		free(buffer);
-		return -3;
-	}
+    if (done != filesize)
+    {
+        free(buffer);
+        return -3;
+    }
 
-	*inbuffer = buffer;
+    *inbuffer = buffer;
 
     //! sign is optional input
     if(size)
         *size = filesize;
 
-	return filesize;
+    return filesize;
 }
 
 int CheckFile(const char * filepath)
 {
-	if(!filepath)
-		return 0;
+    if(!filepath)
+        return 0;
 
-	struct stat filestat;
+    struct stat filestat;
 
-	char dirnoslash[strlen(filepath)+2];
-	snprintf(dirnoslash, sizeof(dirnoslash), "%s", filepath);
+    char dirnoslash[strlen(filepath)+2];
+    snprintf(dirnoslash, sizeof(dirnoslash), "%s", filepath);
 
-	while(dirnoslash[strlen(dirnoslash)-1] == '/')
-		dirnoslash[strlen(dirnoslash)-1] = '\0';
+    while(dirnoslash[strlen(dirnoslash)-1] == '/')
+        dirnoslash[strlen(dirnoslash)-1] = '\0';
 
-	char * notRoot = strrchr(dirnoslash, '/');
-	if(!notRoot)
-	{
-		strcat(dirnoslash, "/");
-	}
+    char * notRoot = strrchr(dirnoslash, '/');
+    if(!notRoot)
+    {
+        strcat(dirnoslash, "/");
+    }
 
-	if (stat(dirnoslash, &filestat) == 0)
-		return 1;
+    if (stat(dirnoslash, &filestat) == 0)
+        return 1;
 
-	return 0;
+    return 0;
 }
 
 int CreateSubfolder(const char * fullpath)
 {
-	if(!fullpath)
-		return 0;
+    if(!fullpath)
+        return 0;
 
-	int result = 0;
+    int result = 0;
 
-	char dirnoslash[strlen(fullpath)+1];
-	strcpy(dirnoslash, fullpath);
+    char dirnoslash[strlen(fullpath)+1];
+    strcpy(dirnoslash, fullpath);
 
-	int pos = strlen(dirnoslash)-1;
-	while(dirnoslash[pos] == '/')
-	{
-		dirnoslash[pos] = '\0';
-		pos--;
-	}
+    int pos = strlen(dirnoslash)-1;
+    while(dirnoslash[pos] == '/')
+    {
+        dirnoslash[pos] = '\0';
+        pos--;
+    }
 
-	if(CheckFile(dirnoslash))
-	{
-		return 1;
-	}
-	else
-	{
-		char parentpath[strlen(dirnoslash)+2];
-		strcpy(parentpath, dirnoslash);
-		char * ptr = strrchr(parentpath, '/');
+    if(CheckFile(dirnoslash))
+    {
+        return 1;
+    }
+    else
+    {
+        char parentpath[strlen(dirnoslash)+2];
+        strcpy(parentpath, dirnoslash);
+        char * ptr = strrchr(parentpath, '/');
 
-		if(!ptr)
-		{
-			//!Device root directory (must be with '/')
-			strcat(parentpath, "/");
-			struct stat filestat;
-			if (stat(parentpath, &filestat) == 0)
-				return 1;
+        if(!ptr)
+        {
+            //!Device root directory (must be with '/')
+            strcat(parentpath, "/");
+            struct stat filestat;
+            if (stat(parentpath, &filestat) == 0)
+                return 1;
 
-			return 0;
-		}
+            return 0;
+        }
 
-		ptr++;
-		ptr[0] = '\0';
+        ptr++;
+        ptr[0] = '\0';
 
-		result = CreateSubfolder(parentpath);
-	}
+        result = CreateSubfolder(parentpath);
+    }
 
-	if(!result)
-		return 0;
+    if(!result)
+        return 0;
 
-	if (mkdir(dirnoslash, 0777) == -1)
-	{
-		return 0;
-	}
+    if (mkdir(dirnoslash, 0777) == -1)
+    {
+        return 0;
+    }
 
-	return 1;
+    return 1;
 }

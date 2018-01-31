@@ -42,19 +42,19 @@ typedef struct
     uint32_t permission;
     uint32_t owner_id;
     uint32_t group_id;
-	uint32_t size; // size in bytes
-	uint32_t physsize; // physical size on disk in bytes
-	uint32_t unk[3];
-	uint32_t id;
-	uint32_t ctime;
-	uint32_t mtime;
-	uint32_t unk2[0x0D];
+    uint32_t size; // size in bytes
+    uint32_t physsize; // physical size on disk in bytes
+    uint32_t unk[3];
+    uint32_t id;
+    uint32_t ctime;
+    uint32_t mtime;
+    uint32_t unk2[0x0D];
 }fileStat_s;
 
 typedef struct
 {
     fileStat_s stat;
-	char name[0x100];
+    char name[0x100];
 }directoryEntry_s;
 
 #define DIR_ENTRY_IS_DIRECTORY      0x80000000

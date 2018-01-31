@@ -204,14 +204,13 @@ void InitOSFunctionPointers(void)
     OS_FIND_EXPORT(coreinit_handle, MEMCreateExpHeapEx);
     OS_FIND_EXPORT(coreinit_handle, MEMDestroyExpHeap);
     OS_FIND_EXPORT(coreinit_handle, MEMFreeToExpHeap);
-	
-	//!----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    //!----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     //! Other function addresses
     //!----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     OS_FIND_EXPORT(coreinit_handle, IOS_Ioctl);
     OS_FIND_EXPORT(coreinit_handle, IOS_Open);
     OS_FIND_EXPORT(coreinit_handle, IOS_Close);
-	OS_FIND_EXPORT(coreinit_handle, IOS_IoctlAsync);
-	
+    OS_FIND_EXPORT(coreinit_handle, IOS_IoctlAsync);
 }
 

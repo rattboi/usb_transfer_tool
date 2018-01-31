@@ -82,7 +82,7 @@ void memoryRelease(void)
 void *__wrap_malloc(size_t size)
 {
     // pointer to a function resolve
-	return ((void * (*)(size_t))(*pMEMAllocFromDefaultHeap))(size);
+    return ((void * (*)(size_t))(*pMEMAllocFromDefaultHeap))(size);
 }
 
 void *__wrap_memalign(size_t align, size_t size)
@@ -104,27 +104,27 @@ void __wrap_free(void *p)
 void *__wrap_calloc(size_t n, size_t size)
 {
     void *p = __wrap_malloc(n * size);
-	if (p != 0) {
-		memset(p, 0, n * size);
-	}
-	return p;
+    if (p != 0) {
+        memset(p, 0, n * size);
+    }
+    return p;
 }
 
 size_t __wrap_malloc_usable_size(void *p)
 {
     //! TODO: this is totally wrong and needs to be addressed
-	return 0x7FFFFFFF;
+    return 0x7FFFFFFF;
 }
 
 void *__wrap_realloc(void *p, size_t size)
 {
     void *new_ptr = __wrap_malloc(size);
-	if (new_ptr != 0)
-	{
-		memcpy(new_ptr, p, __wrap_malloc_usable_size(p) < size ? __wrap_malloc_usable_size(p) : size);
-		__wrap_free(p);
-	}
-	return new_ptr;
+    if (new_ptr != 0)
+    {
+        memcpy(new_ptr, p, __wrap_malloc_usable_size(p) < size ? __wrap_malloc_usable_size(p) : size);
+        __wrap_free(p);
+    }
+    return new_ptr;
 }
 
 //!-------------------------------------------------------------------------------------------
@@ -132,7 +132,7 @@ void *__wrap_realloc(void *p, size_t size)
 //!-------------------------------------------------------------------------------------------
 void *__wrap__malloc_r(struct _reent *r, size_t size)
 {
-	return __wrap_malloc(size);
+    return __wrap_malloc(size);
 }
 
 void *__wrap__calloc_r(struct _reent *r, size_t n, size_t size)

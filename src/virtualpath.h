@@ -37,10 +37,10 @@ extern "C"{
 #include <gctypes.h>
 
 typedef struct {
-	char *name;
-	char *alias;
-	char *prefix;
-	bool inserted;
+    char *name;
+    char *alias;
+    char *prefix;
+    bool inserted;
 } VIRTUAL_PARTITION;
 
 extern VIRTUAL_PARTITION * VIRTUAL_PARTITIONS;
