@@ -23,7 +23,6 @@
 #include "common/common.h"
 #include "ftp.h"
 #include "virtualpath.h"
-#include "vrt.h"
 #include "net.h"
 #include "background.h"
 #include <dirent.h>
@@ -57,36 +56,40 @@ static char errorText2[128] = "";
 static bool folderSelect[1024] = {false};
 static int update_screen=1;
 static bool installFromNetwork=false;
-s32 BroadCastSocket = 0;
-struct sockaddr_in broadcastAddr;
 
-static s32 CreateBroadCastSocket()
-{
-    s32 sock;
+typedef struct {
+  s32 socket;
+  struct sockaddr_in addr;
+  bool initialized;
+} BroadcastInfo;
+
+BroadcastInfo CreateBroadcast() {
+    BroadcastInfo bcastInfo;
+    bcastInfo.initialized = false;
 
     unsigned short broadcastPort = 14521;
     int broadcastPermission = 1;
 
-    if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
-        return 0;
+    if ((bcastInfo.socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
+        return bcastInfo;
 
-    if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (void *)&broadcastPermission,
+    if (setsockopt(bcastInfo.socket, SOL_SOCKET, SO_BROADCAST, (void *)&broadcastPermission,
                    sizeof(broadcastPermission)) < 0)
-        return 0;
+        return bcastInfo;
 
-    memset(&broadcastAddr, 0, sizeof(broadcastAddr));
-    broadcastAddr.sin_family = AF_INET;
-    broadcastAddr.sin_addr.s_addr = 4294967295;
-    broadcastAddr.sin_port = htons(broadcastPort);
+    memset(&bcastInfo.addr, 0, sizeof(struct sockaddr_in));
+    bcastInfo.addr.sin_family = AF_INET;
+    bcastInfo.addr.sin_addr.s_addr = 4294967295;
+    bcastInfo.addr.sin_port = htons(broadcastPort);
 
-    return sock;
+    bcastInfo.initialized = true;
+
+    return bcastInfo;
 }
 
-static void SendBeacon()
-{
+static void SendBeacon(BroadcastInfo bcast) {
     char *sendString = "HELLO FROM WIIU!";
-    unsigned int sendStringLen = strlen(sendString);
-    sendto(BroadCastSocket, sendString, sendStringLen, 0, (struct sockaddr *)&broadcastAddr, sizeof(broadcastAddr));
+    sendto(bcast.socket, sendString, strlen(sendString), 0, (struct sockaddr *)&bcast.addr, sizeof(bcast.addr));
 }
 
 static int IosInstallCallback(unsigned int errorCode, unsigned int *priv_data)
@@ -157,14 +160,11 @@ static void setAllFolderSelect(bool state)
 
 static void RefreshSD()
 {
-    if (!iosuhaxMount)
-    {
+    if (!iosuhaxMount) {
         unmount_sd_fat("sd");
         usleep(50000);
         mount_sd_fat("sd");
-    }
-    else
-    {
+    } else {
         fatUnmount("sd");
         usleep(50000);
         fatInitDefault();
@@ -199,21 +199,18 @@ static int useFolderSelect(void)
     return ret;
 }
 
-static void SetupInstallTitle(void)
-{
+static void SetupInstallTitle(void) {
     if (useFolderSelect())
         dirNum = getNextSelectedFolder();
     GetInstallDir(installFolder, sizeof(installFolder));
 }
 
-static void InstallOrderFromNetwork(char* installpath)
-{
-    strcpy(installFolder,installpath);
+static void InstallOrderFromNetwork(char* installPath) {
+    strcpy(installFolder, installPath);
     installFromNetwork=true;
 }
 
-static void InstallTitle(void)
-{
+static void InstallTitle(void) {
     errorText1[0] = 0;
     errorText2[0] = 0;
     installSuccess = 0;
@@ -228,8 +225,7 @@ static void InstallTitle(void)
     //! it is just translated to C
     //!---------------------------------------------------
     unsigned int mcpHandle = MCP_Open();
-    if (mcpHandle == 0)
-    {
+    if (mcpHandle == 0) {
         __os_snprintf(errorText1, sizeof(errorText1), "Failed to open MCP.");
         return;
     }
@@ -239,8 +235,7 @@ static void InstallTitle(void)
     char *mcpInstallPath = (char *)OSAllocFromSystem(MAX_INSTALL_PATH_LENGTH, 0x40);
     unsigned int *mcpPathInfoVector = (unsigned int *)OSAllocFromSystem(0x0C, 0x40);
 
-    do
-    {
+    do {
         if (!mcpInstallInfo || !mcpInstallPath || !mcpPathInfoVector)
         {
             __os_snprintf(errorText1, sizeof(errorText1), "Error: Could not allocate memory.");
@@ -261,8 +256,8 @@ static void InstallTitle(void)
         u32 titleIdLow = mcpInstallInfo[1];
         int spoofFiles = 0;
         if ((titleIdHigh == 00050010) && ((titleIdLow == 0x10041000)      // JAP Version.bin
-                                          || (titleIdLow == 0x10041100)   // USA Version.bin
-                                          || (titleIdLow == 0x10041200))) // EUR Version.bin
+                                       || (titleIdLow == 0x10041100)      // USA Version.bin
+                                       || (titleIdLow == 0x10041200)))    // EUR Version.bin
         {
             spoofFiles = 1;
             installToUsb = 0;
@@ -276,16 +271,14 @@ static void InstallTitle(void)
             installedTitle = ((u64)titleIdHigh << 32ULL) | titleIdLow;
 
             result = MCP_InstallSetTargetDevice(mcpHandle, installToUsb);
-            if (result != 0)
-            {
+            if (result != 0) {
                 __os_snprintf(errorText1, sizeof(errorText1), "Error: MCP_InstallSetTargetDevice 0x%08X", MCP_GetLastRawError());
                 if (installToUsb)
                     __os_snprintf(errorText2, sizeof(errorText2), "Possible USB HDD disconnected or failure");
                 break;
             }
             result = MCP_InstallSetTargetUsb(mcpHandle, installToUsb);
-            if (result != 0)
-            {
+            if (result != 0) {
                 __os_snprintf(errorText1, sizeof(errorText1), "Error: MCP_InstallSetTargetUsb 0x%08X", MCP_GetLastRawError());
                 if (installToUsb)
                     __os_snprintf(errorText2, sizeof(errorText2), "Possible USB HDD disconnected or failure");
@@ -411,11 +404,9 @@ static void InstallTitle(void)
         OSFreeToSystem(mcpInstallInfo);
 }
 
-unsigned int InitiateWUP(void)
-{
+unsigned int InitiateWUP(BroadcastInfo bcastInfo) {
     update_screen = 1;
     int delay = 0;
-    int vpadError = -1;
     VPADData vpad_data;
 
     u64 currenTitleId = OSGetTitleID();
@@ -449,7 +440,7 @@ unsigned int InitiateWUP(void)
         {
             loopCounter = 0;
             GetInstallDir(installFolder, sizeof(installFolder));
-            SendBeacon();
+            SendBeacon(bcastInfo);
             for (int i = 0; i < 2; i++)
             {
                 OSScreenClearBufferEx(i, 0);
@@ -522,6 +513,7 @@ unsigned int InitiateWUP(void)
         }
         update_screen = 0;
 
+        int vpadError = -1;
         VPADRead(0, &vpad_data, 1, &vpadError);
         u32 pressedBtns = 0;
         int yPressed = 0;
@@ -529,8 +521,7 @@ unsigned int InitiateWUP(void)
         if (!vpadError)
             pressedBtns = vpad_data.btns_d | vpad_data.btns_h;
 
-        if (pressedBtns & VPAD_BUTTON_HOME)
-        {
+        if (pressedBtns & VPAD_BUTTON_HOME) {
             doInstall = 0;
             break;
         }
@@ -538,8 +529,7 @@ unsigned int InitiateWUP(void)
         if (!(pressedBtns & VPAD_BUTTON_Y))
             yPressed = 0;
 
-        if (!doInstall)
-        {
+        if (!doInstall) {
             if (!(pressedBtns & (VPAD_BUTTON_UP | VPAD_BUTTON_DOWN)))
                 delay = 0;
 
@@ -548,8 +538,7 @@ unsigned int InitiateWUP(void)
                 installFromNetwork=false;
                 doInstall = 1;
                 installToUsb =1;
-                if (hblChannelLaunch)
-                {
+                if (hblChannelLaunch) {
                     InstallTitle();
                     update_screen = 1;
                     if (doInstall)
@@ -559,8 +548,7 @@ unsigned int InitiateWUP(void)
                     break;
             }
 
-            if (pressedBtns & (VPAD_BUTTON_A | VPAD_BUTTON_X)) // install to NAND/USB
-            {
+            if (pressedBtns & (VPAD_BUTTON_A | VPAD_BUTTON_X)) // install to NAND/USB {
                 doInstall = 1;
                 installToUsb = (pressedBtns & VPAD_BUTTON_X) ? 1 : 0;
                 SetupInstallTitle();
@@ -798,11 +786,11 @@ int Menu_Main(void)
 
     LoadPictures();
 
-    BroadCastSocket = CreateBroadCastSocket(); // never cleaned up?
+    BroadcastInfo bcastInfo = CreateBroadcast(); // never cleaned up?
 
     InitiateFTP();
 
-    unsigned int exit_code = InitiateWUP(); // This is a blocking call that is most of the program...
+    unsigned int exit_code = InitiateWUP(bcastInfo); // This is a blocking call that is most of the program...
 
     //!*******************************************************************
     //!                    Exit main application                        *
