@@ -321,18 +321,7 @@ static void InstallTitle(void) {
                     {
                         OSScreenClearBufferEx(i, 0);
                         DrawBackground(i);
-//                        int x, y;
-                        int y;
-                        if (i == 0)
-                        {
-//                            x = 0;
-                            y = 9;
-                        }
-                        else
-                        {
-//                            x = 0;
-                            y = 7;
-                        }
+                        int y = (i == 0 ? 9 : 7);
                         OSScreenPutFontEx(i, 0, 0, TITLE_TEXT);
                         OSScreenPutFontEx(i, 0, 1, TITLE_TEXT2);
                         OSScreenPutFontEx(i, 0, y, "Installing title...");
@@ -354,14 +343,10 @@ static void InstallTitle(void) {
                 usleep(50000);
             }
 
-            if (installError != 0)
-            {
-                if ((installError == 0xFFFCFFE9) && installToUsb)
-                {
+            if (installError != 0) {
+                if ((installError == 0xFFFCFFE9) && installToUsb) {
                     __os_snprintf(errorText1, sizeof(errorText1), "Error: 0x%08X access failed (no USB storage attached?)", installError);
-                }
-                else
-                {
+                } else {
                     __os_snprintf(errorText1, sizeof(errorText1), "Error: install error code 0x%08X", installError);
                     if (installError == 0xFFFBF446 || installError == 0xFFFBF43F)
                         __os_snprintf(errorText2, sizeof(errorText2), "Possible missing or bad title.tik file");
@@ -374,14 +359,10 @@ static void InstallTitle(void) {
                     else if ((installError & 0xFFFF0000) == 0xFFFB0000)
                         __os_snprintf(errorText2, sizeof(errorText2), "Verify WUP files are correct & complete. DLC/E-shop require Sig Patch");
                 }
-            }
-            else
-            {
+            } else {
                 installSuccess = 1;
             }
-        }
-        else
-        {
+        } else {
             __os_snprintf(errorText1, sizeof(errorText1), "Error: Not a game, game update, DLC, demo or version title");
         }
     } while (0);
@@ -402,6 +383,57 @@ static void InstallTitle(void) {
         OSFreeToSystem(mcpInstallPath);
     if (mcpInstallInfo)
         OSFreeToSystem(mcpInstallInfo);
+}
+
+void UpdateLoop(int delay) {
+    for (int i = 0; i < 2; i++) {
+        char text[160];
+
+        OSScreenClearBufferEx(i, 0);
+        DrawBackground(i);
+
+        OSScreenPutFontEx(i, 0, 0, TITLE_TEXT);
+        OSScreenPutFontEx(i, 0, 1, TITLE_TEXT2);
+        if (iosuhaxMount)
+            __os_snprintf(ipaddress, sizeof(ipaddress), "YOUR IP: %u.%u.%u.%u:%i  (IOSUHAX SPEED BOOST)", (network_gethostip() >> 24) & 0xFF, (network_gethostip() >> 16) & 0xFF, (network_gethostip() >> 8) & 0xFF, (network_gethostip() >> 0) & 0xFF, 21);
+        else
+            __os_snprintf(ipaddress, sizeof(ipaddress), "YOUR IP: %u.%u.%u.%u:%i (NO IOSUHAX SPEED BOOST)", (network_gethostip() >> 24) & 0xFF, (network_gethostip() >> 16) & 0xFF, (network_gethostip() >> 8) & 0xFF, (network_gethostip() >> 0) & 0xFF, 21);
+        OSScreenPutFontEx(i, 0, 2, ipaddress);
+        OSScreenPutFontEx(i, 0, 4, lastFolder);
+        __os_snprintf(text, sizeof(text), "Install of title %08X-%08X ", (u32)(installedTitle >> 32), (u32)(installedTitle & 0xffffffff));
+        if (installSuccess) {
+            __os_snprintf(text, sizeof(text), "%s finished successfully.", text);
+            OSScreenPutFontEx(i, 0, 3, text);
+        } else if (installCompleted) {
+            __os_snprintf(text, sizeof(text), "%s failed.", text);
+            OSScreenPutFontEx(i, 0, 3, text);
+            OSScreenPutFontEx(i, 0, 5, errorText1);
+            OSScreenPutFontEx(i, 0, 6, errorText2);
+        }
+
+        if (!doInstall) {
+            int y = (i == 0 ? 10 : 8);
+            OSScreenPutFontEx(i, 0, y, "Select a title to install (* = Selected)");
+            if(strlen(installFolder)<63+8) {
+                __os_snprintf(text, sizeof(text), "%c  %s", folderSelect[dirNum] ? '*' : ' ', installFolder+8);
+                OSScreenPutFontEx(i, 0, y + 1, text);
+            } else {
+                __os_snprintf(text, 67, "%c  %s", folderSelect[dirNum] ? '*' : ' ', installFolder+8);
+                OSScreenPutFontEx(i, 0, y + 1, text);
+                __os_snprintf(text, 160-67, "   %s", installFolder+63+8);
+                OSScreenPutFontEx(i, 0, y + 2, text);
+            }
+        } else {
+            OSScreenPutFontEx(i, 0, 8, installFolder);
+            __os_snprintf(text, sizeof(text), "Will install in %d", delay / 50);
+            OSScreenPutFontEx(i, 0, 9, text);
+            OSScreenPutFontEx(i, 0, 10, "Press B-Button to Cancel");
+        }
+    }
+
+    // Flip buffers
+    OSScreenFlipBuffersEx(0);
+    OSScreenFlipBuffersEx(1);
 }
 
 unsigned int InitiateWUP(BroadcastInfo bcastInfo) {
@@ -436,80 +468,11 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo) {
         process_ftp_events(serverSocket);
 
         // print to TV and DRC
-        if (update_screen || loopCounter > 150)
-        {
-            loopCounter = 0;
-            GetInstallDir(installFolder, sizeof(installFolder));
-            SendBeacon(bcastInfo);
-            for (int i = 0; i < 2; i++)
-            {
-                OSScreenClearBufferEx(i, 0);
-                DrawBackground(i);
-
-                char text[160];
-
-                OSScreenPutFontEx(i, 0, 0, TITLE_TEXT);
-                OSScreenPutFontEx(i, 0, 1, TITLE_TEXT2);
-                if (iosuhaxMount)
-                    __os_snprintf(ipaddress, sizeof(ipaddress), "YOUR IP: %u.%u.%u.%u:%i  (IOSUHAX SPEED BOOST)", (network_gethostip() >> 24) & 0xFF, (network_gethostip() >> 16) & 0xFF, (network_gethostip() >> 8) & 0xFF, (network_gethostip() >> 0) & 0xFF, 21);
-                else
-                    __os_snprintf(ipaddress, sizeof(ipaddress), "YOUR IP: %u.%u.%u.%u:%i (NO IOSUHAX SPEED BOOST)", (network_gethostip() >> 24) & 0xFF, (network_gethostip() >> 16) & 0xFF, (network_gethostip() >> 8) & 0xFF, (network_gethostip() >> 0) & 0xFF, 21);
-                OSScreenPutFontEx(i, 0, 2, ipaddress);
-                OSScreenPutFontEx(i, 0, 4, lastFolder);
-                __os_snprintf(text, sizeof(text), "Install of title %08X-%08X ", (u32)(installedTitle >> 32), (u32)(installedTitle & 0xffffffff));
-                if (installSuccess)
-                {
-                    __os_snprintf(text, sizeof(text), "%s finished successfully.", text);
-                    OSScreenPutFontEx(i, 0, 3, text);
-                }
-                else if (installCompleted)
-                {
-                    __os_snprintf(text, sizeof(text), "%s failed.", text);
-                    OSScreenPutFontEx(0, 0, 3, text);
-                    OSScreenPutFontEx(0, 0, 5, errorText1);
-                    OSScreenPutFontEx(0, 0, 6, errorText2);
-                }
-
-                if (!doInstall)
-                {
-                    int x, y;
-                    if (i == 0)
-                    {
-                        x = 0;
-                        y = 10;
-                    }
-                    else
-                    {
-                        x = 0;
-                        y = 8;
-                    }
-                    OSScreenPutFontEx(i, x, y, "Select a title to install (* = Selected)");
-                    if(strlen(installFolder)<63+8)
-                    {
-                        __os_snprintf(text, sizeof(text), "%c  %s", folderSelect[dirNum] ? '*' : ' ', installFolder+8);
-                         OSScreenPutFontEx(i, x, y + 1, text);
-                     }
-                     else
-                     {
-                        __os_snprintf(text, 67, "%c  %s", folderSelect[dirNum] ? '*' : ' ', installFolder+8);
-                         OSScreenPutFontEx(i, x, y + 1, text);
-                         __os_snprintf(text, 160-67, "   %s", installFolder+63+8);
-                         OSScreenPutFontEx(i, x, y + 2, text);
-                     }
-                   
-                }
-                else
-                {
-                    OSScreenPutFontEx(i, 0, 8, installFolder);
-                    __os_snprintf(text, sizeof(text), "Will install in %d", delay / 50);
-                    OSScreenPutFontEx(i, 0, 9, text);
-                    OSScreenPutFontEx(i, 0, 10, "Press B-Button to Cancel");
-                }
-            }
-
-            // Flip buffers
-            OSScreenFlipBuffersEx(0);
-            OSScreenFlipBuffersEx(1);
+        if (update_screen || loopCounter > 150) {
+          GetInstallDir(installFolder, sizeof(installFolder));
+          SendBeacon(bcastInfo);
+          UpdateLoop(delay);
+          loopCounter = 0;
         }
         update_screen = 0;
 
@@ -533,8 +496,7 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo) {
             if (!(pressedBtns & (VPAD_BUTTON_UP | VPAD_BUTTON_DOWN)))
                 delay = 0;
 
-            if(installFromNetwork)
-            {
+            if(installFromNetwork) {
                 installFromNetwork=false;
                 doInstall = 1;
                 installToUsb =1;
@@ -543,24 +505,23 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo) {
                     update_screen = 1;
                     if (doInstall)
                         delay = 250;
-                }
-                else
+                } else {
                     break;
+                }
             }
 
-            if (pressedBtns & (VPAD_BUTTON_A | VPAD_BUTTON_X)) // install to NAND/USB {
+            if (pressedBtns & (VPAD_BUTTON_A | VPAD_BUTTON_X)) { // install to NAND/USB 
                 doInstall = 1;
                 installToUsb = (pressedBtns & VPAD_BUTTON_X) ? 1 : 0;
                 SetupInstallTitle();
-                if (hblChannelLaunch)
-                {
+                if (hblChannelLaunch) {
                     InstallTitle();
                     update_screen = 1;
                     if (doInstall)
                         delay = 250;
-                }
-                else
+                } else {
                     break;
+                }
             }
             else if (pressedBtns & VPAD_BUTTON_Y) // remount SD
             {
@@ -631,13 +592,9 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo) {
         usleep(20000);
     }
 
-    if (doInstall)
-    {
+    if (doInstall) {
         return EXIT_RELAUNCH_ON_LOAD;
-    }
-
-    if (!doInstall)
-    {
+    } else {
         setAllFolderSelect(false);
         dirNum = 0;
         installFolder[0] = 0;
@@ -646,8 +603,7 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo) {
     return EXIT_SUCCESS;
 }
 
-void InitiateFTP()
-{
+void InitiateFTP() {
     serverSocket = create_server(21);
     SetREFRECallBack(&RefreshSD);
     SetINSTCallBack(&InstallOrderFromNetwork);
@@ -782,7 +738,7 @@ int Menu_Main(void)
     //!                        Initialize FS                             *
     //!*******************************************************************
 
-    int fsaFd = MountSd();
+    int fsaFd = MountSd();  // fsaFd == -1 -> no iosuhax
 
     LoadPictures();
 
