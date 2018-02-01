@@ -30,10 +30,16 @@ u8 *LoadPicture(char *name, u32 size)
     return buf;
 }
 
-void LoadPictures()
-{
+void LoadPictures() {
     picTVBuf = LoadPicture("sd://res/tvBack.tga", TV_WIDTH * TV_HEIGHT * 3 + 18);
     picDRCBuf = LoadPicture("sd://res/drcBack.tga", DRC_WIDTH * DRC_HEIGHT * 3 + 18);
+}
+
+void UnloadPictures() {
+    if (picTVBuf != NULL)
+      free(picTVBuf);
+    if (picDRCBuf != NULL)
+      free(picDRCBuf);
 }
 
 void DrawBackground(int screen)

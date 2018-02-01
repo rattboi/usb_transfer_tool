@@ -40,8 +40,7 @@
 #define MAX_INSTALL_PATH_LENGTH 0x27F
 
 static int doInstall = 0;
-int serverSocket = 0;
-int fsaFd = -1;
+int serverSocket = -1;
 bool iosuhaxMount = false;
 static int installCompleted = 0;
 static int installSuccess = 0;
@@ -56,7 +55,6 @@ static char lastFolder[256] = "";
 static char errorText1[128] = "";
 static char errorText2[128] = "";
 static bool folderSelect[1024] = {false};
-static bool firstLaunch = true;
 static int update_screen=1;
 static bool installFromNetwork=false;
 s32 BroadCastSocket = 0;
@@ -667,6 +665,11 @@ void InitiateFTP()
     SetINSTCallBack(&InstallOrderFromNetwork);
 }
 
+void ShutdownFTP() {
+    cleanup_ftp();
+    network_close(serverSocket);
+}
+
 //just to be able to call async
 void someFunc(void *arg)
 {
@@ -704,53 +707,38 @@ void MCPHookClose()
     mcp_hook_fd = -1;
 }
 
-void MountSd()
-{
 
-    iosuhaxMount=false;
+int MountSd() {
+    int fsaFd = -1;
     int res = IOSUHAX_Open(NULL);
-    if (res < 0)
-    {
+    if (res < 0) { // no iosuhax available, use normal stuff
         mount_sd_fat("sd");
         VirtualMountDevice("sd:/");  
-    }
-    else
-    {
+    } else {
         iosuhaxMount = true;
         fatInitDefault();
         fsaFd = IOSUHAX_FSA_Open();
-        //mount_fs("storage_mlc", fsaFd, NULL, "/vol/storage_mlc01");
         mount_fs("storage_usb", fsaFd, NULL, "/vol/storage_usb01");
         VirtualMountDevice("sd:/");
         VirtualMountDevice("storage_usb:/");
-        //VirtualMountDevice("storage_mlc:/");
+    }
+    return fsaFd;
+}
+
+void ShutdownStorage(int fsaFd) {
+    if (fsaFd != -1) { // this means we had iosuhax from MountSd
+        fatUnmount("sd");
+        IOSUHAX_sdio_disc_interface.shutdown();
+        IOSUHAX_usb_disc_interface.shutdown();
+        unmount_fs("storage_usb");
+        IOSUHAX_FSA_Close(fsaFd);
+        IOSUHAX_Close();
+    } else {
+        unmount_sd_fat("sd");
     }
 }
 
-/* Entry point */
-int Menu_Main(void)
-{
-    //!*******************************************************************
-    //!                   Initialize function pointers                   *
-    //!*******************************************************************
-    //! do OS (for acquire) and sockets first so we got logging
-    InitOSFunctionPointers();
-    InitSocketFunctionPointers();
-    InitFSFunctionPointers();
-    InitVPadFunctionPointers();
-    InitSysFunctionPointers();
-
-    //!*******************************************************************
-    //!                    Initialize heap memory                        *
-    //!*******************************************************************
-
-    memoryInitialize();
-
-    //!*******************************************************************
-    //!                        Initialize FS                             *
-    //!*******************************************************************
-
-    // Prepare screen
+unsigned char* screenInitialize() {
     int screen_buf0_size = 0;
     int screen_buf1_size = 0;
     // Init screen and screen buffers
@@ -773,39 +761,59 @@ int Menu_Main(void)
     // Flip buffers
     OSScreenFlipBuffersEx(0);
     OSScreenFlipBuffersEx(1);
-    MountSd();
-    LoadPictures();
-    BroadCastSocket = CreateBroadCastSocket();
-    firstLaunch = false;
-    if (!doInstall)
-        InitiateFTP();
-    unsigned int exit_code = InitiateWUP();
 
-    cleanup_ftp();
-    if (serverSocket >= 0)
-        network_close(serverSocket);
+    return screenBuffer;
+}
+
+/* Entry point */
+int Menu_Main(void)
+{
+    //!*******************************************************************
+    //!                   Initialize function pointers                   *
+    //!*******************************************************************
+    //! do OS (for acquire) and sockets first so we got logging
+    InitOSFunctionPointers();
+    InitSocketFunctionPointers();
+    InitFSFunctionPointers();
+    InitVPadFunctionPointers();
+    InitSysFunctionPointers();
+
+    //!*******************************************************************
+    //!                    Initialize heap memory                        *
+    //!*******************************************************************
+
+    memoryInitialize();
+
+    //!*******************************************************************
+    //!                        Initialize Screen                         *
+    //!*******************************************************************
+
+    unsigned char *screenBuffer = screenInitialize();
+
+    //!*******************************************************************
+    //!                        Initialize FS                             *
+    //!*******************************************************************
+
+    int fsaFd = MountSd();
+
+    LoadPictures();
+
+    BroadCastSocket = CreateBroadCastSocket(); // never cleaned up?
+
+    InitiateFTP();
+
+    unsigned int exit_code = InitiateWUP(); // This is a blocking call that is most of the program...
 
     //!*******************************************************************
     //!                    Exit main application                        *
     //!*******************************************************************
 
-    if (iosuhaxMount)
-    {
-        fatUnmount("sd");
-        IOSUHAX_sdio_disc_interface.shutdown();
-        IOSUHAX_usb_disc_interface.shutdown();
-        unmount_fs("storage_usb");
-        //unmount_fs("storage_mlc");
-        IOSUHAX_FSA_Close(fsaFd);
-        IOSUHAX_Close();
-    }
-    else
-    {
-        unmount_sd_fat("sd");
-    }
+    ShutdownFTP();
 
-    free(picDRCBuf);
-    free(picTVBuf);
+    ShutdownStorage(fsaFd);
+
+    UnloadPictures();
+
     MEM1_free(screenBuffer);
 
     screenBuffer = NULL;
@@ -813,14 +821,12 @@ int Menu_Main(void)
     UnmountVirtualPaths();
     memoryRelease();
 
-    if (exit_code == EXIT_RELAUNCH_ON_LOAD)
-    {
+    if (exit_code == EXIT_RELAUNCH_ON_LOAD) {
         SYSLaunchMenu();
         return EXIT_RELAUNCH_ON_LOAD;
     }
 
-    if (exit_code == EXIT_RELAUNCH_ID_ON_LOAD)
-    {
+    if (exit_code == EXIT_RELAUNCH_ID_ON_LOAD) {
         SYSLaunchTitle(baseTitleId);
         return EXIT_RELAUNCH_ON_LOAD;
     }

@@ -8,11 +8,9 @@ extern "C"{
 
 #include <gctypes.h>
 
-extern u8 *picTVBuf;
-extern u8 *picDRCBuf;
-
 u8* LoadPicture(char* name, u32 size);
 void LoadPictures();
+void UnloadPictures();
 
 void DrawBackground(int screen);
 
