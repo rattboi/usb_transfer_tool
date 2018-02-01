@@ -38,6 +38,8 @@
 #define MCP_COMMAND_INSTALL_ASYNC 0x81
 #define MAX_INSTALL_PATH_LENGTH 0x27F
 
+#define MAX_FOLDERS 1024
+
 static int doInstall = 0;
 //int serverSocket = -1;
 bool iosuhaxMount = false;
@@ -49,11 +51,10 @@ static u64 installedTitle = 0;
 static u64 baseTitleId = 0;
 static int dirNum = 0;
 static char installFolder[256] = "";
-static char ipaddress[256] = "";
 static char lastFolder[256] = "";
 static char errorText1[128] = "";
 static char errorText2[128] = "";
-static bool folderSelect[1024] = {false};
+static bool folderSelect[MAX_FOLDERS] = {false};
 static int update_screen=1;
 static bool installFromNetwork=false;
 
@@ -137,7 +138,7 @@ static void setAllFolderSelect(bool state)
     DIR *dirPtr;
     struct dirent *dirEntry;
 
-    for (int i = 0; i < 1023; i++)
+    for (int i = 0; i < MAX_FOLDERS; i++)
         folderSelect[i] = false;
 
     if (state)
@@ -158,8 +159,7 @@ static void setAllFolderSelect(bool state)
     }
 }
 
-static void RefreshSD()
-{
+static void RefreshSD() {
     if (!iosuhaxMount) {
         unmount_sd_fat("sd");
         usleep(50000);
@@ -177,26 +177,22 @@ static void RefreshSD()
     usleep(50000);
 }
 
-static int getNextSelectedFolder(void)
-{
-    int i;
-    for (i = 0; i < 1023; i++)
-        if (folderSelect[i] == true)
-            break;
-    return (i < 1023) ? i : 0;
+static int getNextSelectedFolder(void) {
+    for (int i = 0; i < MAX_FOLDERS; i++) {
+        if (folderSelect[i] == true) {
+            return i;
+        }
+    }
+    return 0;
 }
 
-static int useFolderSelect(void)
-{
-    int i;
-    int ret = 0;
-    for (i = 0; i < 1023; i++)
-        if (folderSelect[i] == true)
-        {
-            ret = 1;
-            break;
+static bool useFolderSelect() {
+    for (int i = 0; i < MAX_FOLDERS; i++) {
+        if (folderSelect[i] == true) {
+            return true;
         }
-    return ret;
+    } 
+    return false;
 }
 
 static void SetupInstallTitle(void) {
@@ -386,6 +382,8 @@ static void InstallTitle(void) {
 }
 
 void UpdateLoop(int delay) {
+    char ipaddress[256] = "";
+    u32 host_ip = network_gethostip();
     for (int i = 0; i < 2; i++) {
         char text[160];
 
@@ -394,10 +392,12 @@ void UpdateLoop(int delay) {
 
         OSScreenPutFontEx(i, 0, 0, TITLE_TEXT);
         OSScreenPutFontEx(i, 0, 1, TITLE_TEXT2);
-        if (iosuhaxMount)
-            __os_snprintf(ipaddress, sizeof(ipaddress), "YOUR IP: %u.%u.%u.%u:%i  (IOSUHAX SPEED BOOST)", (network_gethostip() >> 24) & 0xFF, (network_gethostip() >> 16) & 0xFF, (network_gethostip() >> 8) & 0xFF, (network_gethostip() >> 0) & 0xFF, 21);
-        else
-            __os_snprintf(ipaddress, sizeof(ipaddress), "YOUR IP: %u.%u.%u.%u:%i (NO IOSUHAX SPEED BOOST)", (network_gethostip() >> 24) & 0xFF, (network_gethostip() >> 16) & 0xFF, (network_gethostip() >> 8) & 0xFF, (network_gethostip() >> 0) & 0xFF, 21);
+        __os_snprintf(ipaddress, sizeof(ipaddress), 
+            "YOUR IP: %u.%u.%u.%u:%i %sIOSUHAX SPEED BOOST)", 
+            (host_ip >> 24) & 0xFF, 
+            (host_ip >> 16) & 0xFF, 
+            (host_ip >> 8) & 0xFF, 
+            (host_ip >> 0) & 0xFF, 21, iosuhaxMount ? "  (" : "(NO ");
         OSScreenPutFontEx(i, 0, 2, ipaddress);
         OSScreenPutFontEx(i, 0, 4, lastFolder);
         __os_snprintf(text, sizeof(text), "Install of title %08X-%08X ", (u32)(installedTitle >> 32), (u32)(installedTitle & 0xffffffff));
@@ -497,9 +497,9 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo, int serverSocket) {
                 delay = 0;
 
             if(installFromNetwork) {
-                installFromNetwork=false;
+                installFromNetwork = false;
                 doInstall = 1;
-                installToUsb =1;
+                installToUsb = 1;
                 if (hblChannelLaunch) {
                     InstallTitle();
                     update_screen = 1;
@@ -535,10 +535,7 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo, int serverSocket) {
             {
                 if (--delay <= 0)
                 {
-                    if (dirNum < 1000)
-                        dirNum++;
-                    else
-                        dirNum = 0;
+                    dirNum++;
                     delay = (vpad_data.btns_d & VPAD_BUTTON_UP) ? 6 : 0;
                 }
             }
@@ -546,8 +543,7 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo, int serverSocket) {
             {
                 if (--delay <= 0)
                 {
-                    if (dirNum > 0)
-                        dirNum--;
+                    dirNum--;
                     delay = (vpad_data.btns_d & VPAD_BUTTON_DOWN) ? 6 : 0;
                 }
             }
@@ -560,11 +556,12 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo, int serverSocket) {
                 setAllFolderSelect((pressedBtns & VPAD_BUTTON_PLUS) ? true : false);
             }
 
+            if (dirNum >= MAX_FOLDERS || dirNum < 0) // wrap on one end
+                dirNum = 0;
+
             // folder selection button pressed ?
             update_screen |= (pressedBtns & (VPAD_BUTTON_UP | VPAD_BUTTON_DOWN | VPAD_BUTTON_LEFT | VPAD_BUTTON_RIGHT | VPAD_BUTTON_PLUS | VPAD_BUTTON_MINUS | VPAD_BUTTON_Y)) ? 1 : 0;
-        }
-        else
-        {
+        } else {
             if (pressedBtns & VPAD_BUTTON_B) // cancel
             {
                 doInstall = 0;
