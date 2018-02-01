@@ -39,7 +39,7 @@
 #define MAX_INSTALL_PATH_LENGTH 0x27F
 
 static int doInstall = 0;
-int serverSocket = -1;
+//int serverSocket = -1;
 bool iosuhaxMount = false;
 static int installCompleted = 0;
 static int installSuccess = 0;
@@ -436,7 +436,7 @@ void UpdateLoop(int delay) {
     OSScreenFlipBuffersEx(1);
 }
 
-unsigned int InitiateWUP(BroadcastInfo bcastInfo) {
+unsigned int InitiateWUP(BroadcastInfo bcastInfo, int serverSocket) {
     update_screen = 1;
     int delay = 0;
     VPADData vpad_data;
@@ -603,13 +603,14 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo) {
     return EXIT_SUCCESS;
 }
 
-void InitiateFTP() {
-    serverSocket = create_server(21);
+int InitiateFTP() {
+    int serverSocket = create_server(21);
     SetREFRECallBack(&RefreshSD);
     SetINSTCallBack(&InstallOrderFromNetwork);
+    return serverSocket;
 }
 
-void ShutdownFTP() {
+void ShutdownFTP(int serverSocket) {
     cleanup_ftp();
     network_close(serverSocket);
 }
@@ -744,15 +745,15 @@ int Menu_Main(void)
 
     BroadcastInfo bcastInfo = CreateBroadcast(); // never cleaned up?
 
-    InitiateFTP();
+    int serverSocket = InitiateFTP();
 
-    unsigned int exit_code = InitiateWUP(bcastInfo); // This is a blocking call that is most of the program...
+    unsigned int exit_code = InitiateWUP(bcastInfo, serverSocket); // This is a blocking call that is most of the program...
 
     //!*******************************************************************
     //!                    Exit main application                        *
     //!*******************************************************************
 
-    ShutdownFTP();
+    ShutdownFTP(serverSocket);
 
     ShutdownStorage(fsaFd);
 
