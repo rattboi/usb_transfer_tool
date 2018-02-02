@@ -63,6 +63,32 @@ extern "C" {
 
 #define OS_MUTEX_SIZE                   44
 
+typedef enum MCPInstallTarget {
+    MCP_INSTALL_TARGET_MLC  = 0,
+    MCP_INSTALL_TARGET_USB  = 1,
+} MCPInstallTarget;
+
+typedef struct MCPInstallProgress {
+    uint32_t inProgress;
+    uint64_t tid;
+    uint64_t sizeTotal;
+    uint64_t sizeProgress;
+    uint32_t contentsTotal;
+    uint32_t contentsProgress;
+} MCPInstallProgress;
+
+typedef struct MCPInstallInfo {
+    char unknown[0x27F];
+} MCPInstallInfo;
+
+typedef struct MCPDevice {
+    char name[0x31B];
+} MCPDevice;
+
+typedef struct MCPDeviceList {
+    MCPDevice devices[32];
+} MCPDeviceList;
+
 /* Handle for coreinit */
 extern unsigned int coreinit_handle;
 void InitOSFunctionPointers(void);
@@ -136,7 +162,7 @@ extern int (*MCP_Close)(unsigned int handle);
 extern int (*MCP_InstallTitleAbort)(unsigned int handle);
 extern int (*MCP_InstallGetInfo)(unsigned int handle, const char *path, void * mcp_info);
 extern int (*MCP_InstallTitleAsync)(unsigned int handle, const char *path, void * mcp_info);
-extern int (*MCP_InstallGetProgress)(unsigned int handle, void * buffer);
+extern int (*MCP_InstallGetProgress)(unsigned int handle, MCPInstallProgress * installProgressOut);
 extern int (*MCP_InstallSetTargetDevice)(unsigned int handle, int device);
 extern int (*MCP_InstallSetTargetUsb)(unsigned int handle, int device);
 extern int (*MCP_GetLastRawError)(void);
@@ -151,6 +177,7 @@ extern void (* OSSetExceptionCallback)(u8 exceptionType, exception_callback newC
 
 extern int (* LiWaitIopComplete)(int unknown_syscall_arg_r3, int * remaining_bytes);
 extern int (* LiWaitIopCompleteWithInterrupts)(int unknown_syscall_arg_r3, int * remaining_bytes);
+
 
 #ifdef __cplusplus
 }

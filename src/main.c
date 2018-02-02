@@ -241,6 +241,26 @@ void CheckForErrors(int installError) {
     }
 }
 
+void UpdateProgress(char* installFolder, char* progressText, int percent) {
+    for (unsigned int i = 0; i < 2; i++) {
+        OSScreenClearBufferEx(i, 0);
+        DrawBackground(i);
+
+        unsigned int y = (i == 0 ? 9 : 7);
+        OSScreenPutFontEx(i, 0, 0, TITLE_TEXT);
+        OSScreenPutFontEx(i, 0, 1, TITLE_TEXT2);
+        OSScreenPutFontEx(i, 0, y, "Installing title...");
+        OSScreenPutFontEx(i, 0, y + 1, installFolder);
+        OSScreenPutFontEx(i, 0, y + 2, progressText);
+
+        if (percent == 100) {
+            OSScreenPutFontEx(i, 0, y + 3, "Please wait...");
+        }
+
+        OSScreenFlipBuffersEx(i); // Flip buffers
+    }
+}
+
 static void InstallTitle(void) {
     errorText1[0] = 0;
     errorText2[0] = 0;
@@ -261,23 +281,22 @@ static void InstallTitle(void) {
         return;
     }
 
-    char text[256];
-    unsigned int *mcpInstallInfo = (unsigned int *)OSAllocFromSystem(0x24, 0x40);
+    char installPath[256];
+    unsigned int *mcpInstallInfo = (unsigned int *)OSAllocFromSystem(sizeof(MCPInstallInfo), 0x40);
+    MCPInstallProgress *mcpInstallProgress = (MCPInstallProgress *)OSAllocFromSystem(sizeof(MCPInstallProgress), 0x40);
     char *mcpInstallPath = (char *)OSAllocFromSystem(MAX_INSTALL_PATH_LENGTH, 0x40);
     unsigned int *mcpPathInfoVector = (unsigned int *)OSAllocFromSystem(0x0C, 0x40);
 
     do {
-        if (!mcpInstallInfo || !mcpInstallPath || !mcpPathInfoVector)
-        {
+        if (!mcpInstallInfo || !mcpInstallProgress || !mcpInstallPath || !mcpPathInfoVector) {
             __os_snprintf(errorText1, sizeof(errorText1), "Error: Could not allocate memory.");
             break;
         }
 
-        __os_snprintf(text, sizeof(text), "/vol/app_sd/%s", installFolder);
+        __os_snprintf(installPath, sizeof(installPath), "/vol/app_sd/%s", installFolder);
 
-        int result = MCP_InstallGetInfo(mcpHandle, text, mcpInstallInfo);
-        if (result != 0)
-        {
+        int result = MCP_InstallGetInfo(mcpHandle, installPath, mcpInstallInfo);
+        if (result != 0) {
             __os_snprintf(errorText1, sizeof(errorText1), "Error: MCP_InstallGetInfo 0x%08X", MCP_GetLastRawError());
             __os_snprintf(errorText2, sizeof(errorText2), "Confirm complete WUP files are in the folder. Try power down.");
             break;
@@ -322,7 +341,7 @@ static void InstallTitle(void) {
             mcpInstallInfo[5] = (unsigned int)0;
 
             memset(mcpInstallPath, 0, MAX_INSTALL_PATH_LENGTH);
-            __os_snprintf(mcpInstallPath, MAX_INSTALL_PATH_LENGTH, text);
+            __os_snprintf(mcpInstallPath, MAX_INSTALL_PATH_LENGTH, installPath);
             memset(mcpPathInfoVector, 0, 0x0C);
 
             mcpPathInfoVector[0] = (unsigned int)mcpInstallPath;
@@ -330,44 +349,27 @@ static void InstallTitle(void) {
 
             installCompleted = 0;
             result = IOS_IoctlvAsync(mcpHandle, MCP_COMMAND_INSTALL_ASYNC, 1, 0, mcpPathInfoVector, IosInstallCallback, mcpInstallInfo);
-            if (result != 0)
-            {
+            if (result != 0) {
                 __os_snprintf(errorText1, sizeof(errorText1), "Error: MCP_InstallTitleAsync 0x%08X", MCP_GetLastRawError());
                 break;
             }
 
-            while (!installCompleted)
-            {
-                memset(mcpInstallInfo, 0, 0x24);
+            char progressText[256];
+            while (!installCompleted) {
+                memset(mcpInstallProgress, 0, sizeof(MCPInstallProgress));
 
-                result = MCP_InstallGetProgress(mcpHandle, mcpInstallInfo);
+                MCP_InstallGetProgress(mcpHandle, mcpInstallProgress);
 
-                if (mcpInstallInfo[0] == 1)
-                {
-                    u64 installedSize, totalSize;
-                    totalSize = ((u64)mcpInstallInfo[3] << 32ULL) | mcpInstallInfo[4];
-                    installedSize = ((u64)mcpInstallInfo[5] << 32ULL) | mcpInstallInfo[6];
+                if (mcpInstallProgress->inProgress == 1) {
+                    u64 totalSize = mcpInstallProgress->sizeTotal;
+                    u64 installedSize = mcpInstallProgress->sizeProgress;
                     int percent = ((totalSize != 0) ? (int)((installedSize * 100.0f) / totalSize) : 0);
-                    for (unsigned int i = 0; i < 2; i++)
-                    {
-                        OSScreenClearBufferEx(i, 0);
-                        DrawBackground(i);
-                        unsigned int y = (i == 0 ? 9 : 7);
-                        OSScreenPutFontEx(i, 0, 0, TITLE_TEXT);
-                        OSScreenPutFontEx(i, 0, 1, TITLE_TEXT2);
-                        OSScreenPutFontEx(i, 0, y, "Installing title...");
-                        OSScreenPutFontEx(i, 0, y + 1, installFolder);
 
-                        __os_snprintf(text, sizeof(text), "%08X%08X - %0.1f / %0.1f MB (%i%%)", titleIdHigh, titleIdLow, installedSize / (1024.0f * 1024.0f),
-                                      totalSize / (1024.0f * 1024.0f), percent);
-                        OSScreenPutFontEx(i, 0, y + 2, text);
+                    __os_snprintf(progressText, sizeof(progressText), "%08X%08X - %0.1f / %0.1f MB (%i%%)",
+                                  titleIdHigh, titleIdLow, installedSize / (1024.0f * 1024.0f),
+                                  totalSize / (1024.0f * 1024.0f), percent);
 
-                        if (percent == 100) {
-                            OSScreenPutFontEx(i, 0, y + 3, "Please wait...");
-                        }
-                        // Flip buffers
-                        OSScreenFlipBuffersEx(i);
-                    }
+                    UpdateProgress(installFolder, progressText, percent);
                 }
                 usleep(50000);
             }
@@ -393,6 +395,8 @@ static void InstallTitle(void) {
         OSFreeToSystem(mcpInstallPath);
     if (mcpInstallInfo)
         OSFreeToSystem(mcpInstallInfo);
+    if (mcpInstallProgress)
+        OSFreeToSystem(mcpInstallProgress);
 }
 
 void UpdateLoop(int delay, u64 installedTitle, int installSuccess, int installCompleted) {

@@ -90,7 +90,7 @@ EXPORT_DECL(int, MCP_Close, unsigned int handle);
 EXPORT_DECL(int, MCP_InstallTitleAbort, unsigned int handle);
 EXPORT_DECL(int, MCP_InstallGetInfo, unsigned int handle, const char *path, void * mcp_info);
 EXPORT_DECL(int, MCP_InstallTitleAsync, unsigned int handle, const char *path, void * mcp_info);
-EXPORT_DECL(int, MCP_InstallGetProgress, unsigned int handle, void * buffer);
+EXPORT_DECL(int, MCP_InstallGetProgress, unsigned int handle, MCPInstallProgress * buffer);
 EXPORT_DECL(int, MCP_InstallSetTargetDevice, unsigned int handle, int device);
 EXPORT_DECL(int, MCP_InstallSetTargetUsb, unsigned int handle, int device);
 EXPORT_DECL(int, MCP_GetLastRawError, void);
