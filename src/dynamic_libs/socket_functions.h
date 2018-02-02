@@ -44,7 +44,7 @@ extern "C" {
 #define TCP_NODELAY 0x2004
 
 #define MSG_WAITALL 0x40
-#define SOL_SOCKET -1
+#define SOL_SOCKET (-1)
 #define SO_REUSEADDR 0x0004
 #define SO_RCVBUF 0x1002
 #define SO_NONBLOCK 0x1016

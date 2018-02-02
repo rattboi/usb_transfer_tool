@@ -29,8 +29,8 @@
 #include <malloc.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include "dynamic_libs/fs_functions.h"
-#include "dynamic_libs/os_functions.h"
+#include "../dynamic_libs/fs_functions.h"
+#include "../dynamic_libs/os_functions.h"
 #include "fs_utils.h"
 
 #define FS_ALIGNMENT            0x40

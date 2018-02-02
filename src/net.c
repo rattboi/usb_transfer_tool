@@ -161,7 +161,7 @@ s32 network_write(s32 s, const void *mem, s32 len)
 s32 network_close(s32 s)
 {
     if (s < 0)
-    return -1;
+        return -1;
 
     return socketclose(s);
 }
@@ -183,7 +183,7 @@ s32 create_server(u16 port)
 {
     s32 server = network_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (server < 0)
-    return -1;
+        return -1;
 
     set_blocking(server, false);
     u32 enable = 1;
@@ -258,7 +258,7 @@ s32 send_from_file(s32 s, FILE *f)
 {
     char *buf = (char *)malloc(FREAD_BUFFER_SIZE);
     if (!buf)
-    return -1;
+        return -1;
 
     s32 bytes_read;
     s32 result = 0;
@@ -286,7 +286,7 @@ s32 recv_to_file(s32 socket, FILE *f)
 {
     char *buf = (char *)malloc(NET_BUFFER_SIZE);
     if (!buf)
-    return -1;
+        return -1;
     set_blocking(socket, true);
     s32 bytes_read;
     int error_count = 0;
@@ -297,7 +297,7 @@ s32 recv_to_file(s32 socket, FILE *f)
         {
             bytes_read = recv(socket, buf, NET_BUFFER_SIZE, 0);
             if (bytes_read < 0)
-            error_count++;
+                error_count++;
             if (error_count > 400)
             {
                 free(buf);

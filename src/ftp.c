@@ -661,7 +661,6 @@ static s32 ftp_STOR(client_t *client, char *path)
         fd = fileno(f);
     if (f && client->restart_marker && lseek(fd, client->restart_marker, SEEK_SET) != client->restart_marker)
     {
-//        s32 lseek_error = errno;
         fclose(f);
         client->restart_marker = 0;
         return write_reply(client, 550, "ftp_STOR unable to open file");

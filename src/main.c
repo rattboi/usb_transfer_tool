@@ -1,7 +1,5 @@
 #include <string.h>
-#include <stdarg.h>
 #include <stdlib.h>
-#include <malloc.h>
 #include <gctypes.h>
 #include <fat.h>
 #include <iosuhax.h>
@@ -9,17 +7,11 @@
 #include <iosuhax_disc_interface.h>
 #include "dynamic_libs/os_functions.h"
 #include "dynamic_libs/fs_functions.h"
-#include "dynamic_libs/gx2_functions.h"
 #include "dynamic_libs/sys_functions.h"
 #include "dynamic_libs/vpad_functions.h"
-#include "dynamic_libs/padscore_functions.h"
 #include "dynamic_libs/socket_functions.h"
-#include "dynamic_libs/ax_functions.h"
-#include "fs/fs_utils.h"
 #include "fs/sd_fat_devoptab.h"
 #include "system/memory.h"
-#include "utils/logger.h"
-#include "utils/utils.h"
 #include "common/common.h"
 #include "ftp.h"
 #include "virtualpath.h"
@@ -29,7 +21,7 @@
 
 ///WUP
 #define TITLE_TEXT "-----WIIU USB HELPER TRANSFER TOOL-----"
-#define TITLE_TEXT2 "By Hikari06 (Crediar,Dimok,FIX94,Yardape8000)"
+#define TITLE_TEXT2 "By Rattboi (Hikari06,Crediar,Dimok,FIX94,Yardape8000)"
 
 #define HBL_TITLE_ID 0x0005000013374842
 
@@ -41,7 +33,6 @@
 #define MAX_FOLDERS 1024
 
 static int doInstall = 0;
-//int serverSocket = -1;
 bool iosuhaxMount = false;
 static int installCompleted = 0;
 static int installSuccess = 0;
@@ -90,7 +81,7 @@ BroadcastInfo CreateBroadcast() {
 
 static void SendBeacon(BroadcastInfo bcast) {
     char *sendString = "HELLO FROM WIIU!";
-    sendto(bcast.socket, sendString, strlen(sendString), 0, (struct sockaddr *)&bcast.addr, sizeof(bcast.addr));
+    sendto(bcast.socket, sendString, (int) strlen(sendString), 0, (struct sockaddr *)&bcast.addr, sizeof(bcast.addr));
 }
 
 static int IosInstallCallback(unsigned int errorCode, unsigned int *priv_data)
@@ -206,6 +197,50 @@ static void InstallOrderFromNetwork(char* installPath) {
     installFromNetwork=true;
 }
 
+void CheckForErrors(int installError) {
+    const char *errors[7] = {
+      "Unknown Error Code",
+      "USB Access failed (no USB storage attached?)",
+      "Possible missing or bad title.tik file",
+      "Possible incorrect console for DLC title.tik file",
+      "Possible not enough memory on target device",
+      "Possible bad SD card.  Reformat (32k blocks) or replace",
+      "Verify WUP files are correct & complete. DLC/E-shop require Sig Patch"
+    };
+
+    if (installError != 0) {
+        int errorCode = 0;
+        switch(installError) {
+            case 0xFFFCFFE9:
+                errorCode = 1;
+                break;
+            case 0xFFFBF446:
+            case 0xFFFBF43F:
+                errorCode = 2;
+                break;
+            case 0xFFFBF441:
+                errorCode = 3;
+                break;
+            case 0xFFFCFFE4:
+                errorCode = 4;
+                break;
+            case 0xFFFFF825:
+                errorCode = 5;
+                break;
+            default:
+                errorCode = 0;
+        }
+        if ((installError & 0xFFFF0000) == 0xFFFB0000) {
+          errorCode = 6;
+        }
+
+        __os_snprintf(errorText1, sizeof(errorText1), "Error: install error code 0x%08X", installError);
+        __os_snprintf(errorText2, sizeof(errorText2), errors[errorCode]);
+    } else {
+        installSuccess = 1;
+    }
+}
+
 static void InstallTitle(void) {
     errorText1[0] = 0;
     errorText2[0] = 0;
@@ -312,12 +347,12 @@ static void InstallTitle(void) {
                     u64 installedSize, totalSize;
                     totalSize = ((u64)mcpInstallInfo[3] << 32ULL) | mcpInstallInfo[4];
                     installedSize = ((u64)mcpInstallInfo[5] << 32ULL) | mcpInstallInfo[6];
-                    int percent = (totalSize != 0) ? ((installedSize * 100.0f) / totalSize) : 0;
-                    for (int i = 0; i < 2; i++)
+                    int percent = ((totalSize != 0) ? (int)((installedSize * 100.0f) / totalSize) : 0);
+                    for (unsigned int i = 0; i < 2; i++)
                     {
                         OSScreenClearBufferEx(i, 0);
                         DrawBackground(i);
-                        int y = (i == 0 ? 9 : 7);
+                        unsigned int y = (i == 0 ? 9 : 7);
                         OSScreenPutFontEx(i, 0, 0, TITLE_TEXT);
                         OSScreenPutFontEx(i, 0, 1, TITLE_TEXT2);
                         OSScreenPutFontEx(i, 0, y, "Installing title...");
@@ -327,50 +362,29 @@ static void InstallTitle(void) {
                                       totalSize / (1024.0f * 1024.0f), percent);
                         OSScreenPutFontEx(i, 0, y + 2, text);
 
-                        if (percent == 100)
-                        {
+                        if (percent == 100) {
                             OSScreenPutFontEx(i, 0, y + 3, "Please wait...");
                         }
                         // Flip buffers
                         OSScreenFlipBuffersEx(i);
                     }
                 }
-
                 usleep(50000);
             }
 
-            if (installError != 0) {
-                if ((installError == 0xFFFCFFE9) && installToUsb) {
-                    __os_snprintf(errorText1, sizeof(errorText1), "Error: 0x%08X access failed (no USB storage attached?)", installError);
-                } else {
-                    __os_snprintf(errorText1, sizeof(errorText1), "Error: install error code 0x%08X", installError);
-                    if (installError == 0xFFFBF446 || installError == 0xFFFBF43F)
-                        __os_snprintf(errorText2, sizeof(errorText2), "Possible missing or bad title.tik file");
-                    else if (installError == 0xFFFBF441)
-                        __os_snprintf(errorText2, sizeof(errorText2), "Possible incorrect console for DLC title.tik file");
-                    else if (installError == 0xFFFCFFE4)
-                        __os_snprintf(errorText2, sizeof(errorText2), "Possible not enough memory on target device");
-                    else if (installError == 0xFFFFF825)
-                        __os_snprintf(errorText2, sizeof(errorText2), "Possible bad SD card.  Reformat (32k blocks) or replace");
-                    else if ((installError & 0xFFFF0000) == 0xFFFB0000)
-                        __os_snprintf(errorText2, sizeof(errorText2), "Verify WUP files are correct & complete. DLC/E-shop require Sig Patch");
-                }
-            } else {
-                installSuccess = 1;
-            }
+            CheckForErrors(installError);
         } else {
             __os_snprintf(errorText1, sizeof(errorText1), "Error: Not a game, game update, DLC, demo or version title");
         }
     } while (0);
 
     folderSelect[dirNum] = false;
-    if (installSuccess && useFolderSelect())
-    {
+    if (installSuccess && useFolderSelect()) {
         dirNum = getNextSelectedFolder();
         doInstall = 1;
-    }
-    else
+    } else {
         doInstall = 0;
+    }
 
     MCP_Close(mcpHandle);
     if (mcpPathInfoVector)
@@ -381,10 +395,10 @@ static void InstallTitle(void) {
         OSFreeToSystem(mcpInstallInfo);
 }
 
-void UpdateLoop(int delay) {
-    char ipaddress[256] = "";
+void UpdateLoop(int delay, u64 installedTitle, int installSuccess, int installCompleted) {
+    char ip_address[256] = "";
     u32 host_ip = network_gethostip();
-    for (int i = 0; i < 2; i++) {
+    for (unsigned int i = 0; i < 2; i++) {
         char text[160];
 
         OSScreenClearBufferEx(i, 0);
@@ -392,13 +406,13 @@ void UpdateLoop(int delay) {
 
         OSScreenPutFontEx(i, 0, 0, TITLE_TEXT);
         OSScreenPutFontEx(i, 0, 1, TITLE_TEXT2);
-        __os_snprintf(ipaddress, sizeof(ipaddress), 
-            "YOUR IP: %u.%u.%u.%u:%i %sIOSUHAX SPEED BOOST)", 
-            (host_ip >> 24) & 0xFF, 
-            (host_ip >> 16) & 0xFF, 
-            (host_ip >> 8) & 0xFF, 
+        __os_snprintf(ip_address, sizeof(ip_address),
+            "YOUR IP: %u.%u.%u.%u:%i %sIOSUHAX SPEED BOOST)",
+            (host_ip >> 24) & 0xFF,
+            (host_ip >> 16) & 0xFF,
+            (host_ip >> 8) & 0xFF,
             (host_ip >> 0) & 0xFF, 21, iosuhaxMount ? "  (" : "(NO ");
-        OSScreenPutFontEx(i, 0, 2, ipaddress);
+        OSScreenPutFontEx(i, 0, 2, ip_address);
         OSScreenPutFontEx(i, 0, 4, lastFolder);
         __os_snprintf(text, sizeof(text), "Install of title %08X-%08X ", (u32)(installedTitle >> 32), (u32)(installedTitle & 0xffffffff));
         if (installSuccess) {
@@ -412,7 +426,7 @@ void UpdateLoop(int delay) {
         }
 
         if (!doInstall) {
-            int y = (i == 0 ? 10 : 8);
+            unsigned int y = (i == 0 ? 10 : 8);
             OSScreenPutFontEx(i, 0, y, "Select a title to install (* = Selected)");
             if(strlen(installFolder)<63+8) {
                 __os_snprintf(text, sizeof(text), "%c  %s", folderSelect[dirNum] ? '*' : ' ', installFolder+8);
@@ -441,29 +455,22 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo, int serverSocket) {
     int delay = 0;
     VPADData vpad_data;
 
-    u64 currenTitleId = OSGetTitleID();
-    int hblChannelLaunch = (currenTitleId == HBL_TITLE_ID);
+    u64 currentTitleId = OSGetTitleID();
+    int hblChannelLaunch = (currentTitleId == HBL_TITLE_ID);
 
     // in case we are not in mii maker but in system menu we start the installation
-    if (currenTitleId != 0x000500101004A200 && // mii maker eur
-        currenTitleId != 0x000500101004A100 && // mii maker usa
-        currenTitleId != 0x000500101004A000 && // mii maker jpn
-        !hblChannelLaunch)                     // HBL channel
-    {
+    if (currentTitleId != 0x000500101004A200 && // mii maker eur
+        currentTitleId != 0x000500101004A100 && // mii maker usa
+        currentTitleId != 0x000500101004A000 && // mii maker jpn
+        !hblChannelLaunch) {                    // HBL channel
         InstallTitle();
         return EXIT_RELAUNCH_ID_ON_LOAD;
     }
 
-    if (doInstall)
-    {
-        SetupInstallTitle();
-        delay = 250;
-    }
-
-    baseTitleId = currenTitleId;
+    baseTitleId = currentTitleId;
     int loopCounter = 0;
-    while (1)
-    {
+    int yPressed = 0;
+    while (1) {
         loopCounter++;
         process_ftp_events(serverSocket);
 
@@ -471,7 +478,7 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo, int serverSocket) {
         if (update_screen || loopCounter > 150) {
           GetInstallDir(installFolder, sizeof(installFolder));
           SendBeacon(bcastInfo);
-          UpdateLoop(delay);
+          UpdateLoop(delay, installedTitle, installSuccess, installCompleted);
           loopCounter = 0;
         }
         update_screen = 0;
@@ -479,7 +486,6 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo, int serverSocket) {
         int vpadError = -1;
         VPADRead(0, &vpad_data, 1, &vpadError);
         u32 pressedBtns = 0;
-        int yPressed = 0;
 
         if (!vpadError)
             pressedBtns = vpad_data.btns_d | vpad_data.btns_h;
@@ -525,8 +531,7 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo, int serverSocket) {
             }
             else if (pressedBtns & VPAD_BUTTON_Y) // remount SD
             {
-                if (!yPressed)
-                {
+                if (!yPressed) {
                     RefreshSD();
                 }
                 yPressed = 1;
@@ -549,7 +554,7 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo, int serverSocket) {
             }
             else if (pressedBtns & (VPAD_BUTTON_LEFT | VPAD_BUTTON_RIGHT)) // unselect/select directory
             {
-                folderSelect[dirNum] = (pressedBtns & VPAD_BUTTON_RIGHT) ? 1 : 0;
+                folderSelect[dirNum] = (pressedBtns & VPAD_BUTTON_RIGHT) ? true : false;
             }
             else if (pressedBtns & (VPAD_BUTTON_MINUS | VPAD_BUTTON_PLUS)) // unselect/select all directories
             {
@@ -562,17 +567,13 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo, int serverSocket) {
             // folder selection button pressed ?
             update_screen |= (pressedBtns & (VPAD_BUTTON_UP | VPAD_BUTTON_DOWN | VPAD_BUTTON_LEFT | VPAD_BUTTON_RIGHT | VPAD_BUTTON_PLUS | VPAD_BUTTON_MINUS | VPAD_BUTTON_Y)) ? 1 : 0;
         } else {
-            if (pressedBtns & VPAD_BUTTON_B) // cancel
-            {
+            if (pressedBtns & VPAD_BUTTON_B) { // cancel
                 doInstall = 0;
                 installSuccess = 0;
                 update_screen = 1;
                 delay = 0;
-            }
-            else if (--delay <= 0)
-            {
-                if (hblChannelLaunch)
-                {
+            } else if (--delay <= 0) {
+                if (hblChannelLaunch) {
                     __os_snprintf(lastFolder, sizeof(lastFolder), installFolder);
                     SetupInstallTitle();
                     InstallTitle();
@@ -591,11 +592,11 @@ unsigned int InitiateWUP(BroadcastInfo bcastInfo, int serverSocket) {
 
     if (doInstall) {
         return EXIT_RELAUNCH_ON_LOAD;
-    } else {
-        setAllFolderSelect(false);
-        dirNum = 0;
-        installFolder[0] = 0;
     }
+
+    setAllFolderSelect(false);
+    dirNum = 0;
+    installFolder[0] = 0;
 
     return EXIT_SUCCESS;
 }
@@ -611,44 +612,6 @@ void ShutdownFTP(int serverSocket) {
     cleanup_ftp();
     network_close(serverSocket);
 }
-
-//just to be able to call async
-void someFunc(void *arg)
-{
-    (void)arg;
-}
-
-static int mcp_hook_fd = -1;
-int MCPHookOpen()
-{
-    //take over mcp thread
-    mcp_hook_fd = MCP_Open();
-    if (mcp_hook_fd < 0)
-        return -1;
-    IOS_IoctlAsync(mcp_hook_fd, 0x62, (void *)0, 0, (void *)0, 0, someFunc, (void *)0);
-    //let wupserver start up
-    sleep(1);
-    if (IOSUHAX_Open("/dev/mcp") < 0)
-    {
-        MCP_Close(mcp_hook_fd);
-        mcp_hook_fd = -1;
-        return -1;
-    }
-    return 0;
-}
-
-void MCPHookClose()
-{
-    if (mcp_hook_fd < 0)
-        return;
-    //close down wupserver, return control to mcp
-    IOSUHAX_Close();
-    //wait for mcp to return
-    sleep(1);
-    MCP_Close(mcp_hook_fd);
-    mcp_hook_fd = -1;
-}
-
 
 int MountSd() {
     int fsaFd = -1;
@@ -681,8 +644,8 @@ void ShutdownStorage(int fsaFd) {
 }
 
 unsigned char* screenInitialize() {
-    int screen_buf0_size = 0;
-    int screen_buf1_size = 0;
+    unsigned int screen_buf0_size = 0;
+    unsigned int screen_buf1_size = 0;
     // Init screen and screen buffers
     OSScreenInit();
     screen_buf0_size = OSScreenGetBufferSizeEx(0);
@@ -757,8 +720,6 @@ int Menu_Main(void)
     UnloadPictures();
 
     MEM1_free(screenBuffer);
-
-    screenBuffer = NULL;
 
     UnmountVirtualPaths();
     memoryRelease();

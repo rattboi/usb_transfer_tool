@@ -21,6 +21,7 @@ export CC	:=	$(PREFIX)gcc
 export CXX	:=	$(PREFIX)g++
 export AR	:=	$(PREFIX)ar
 export OBJCOPY	:=	$(PREFIX)objcopy
+export WIILOAD	:=	${WIILOAD}
 
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output
@@ -129,6 +130,11 @@ $(BUILD):
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(OUTPUT).elf $(OUTPUT).bin $(BUILD_DBG).elf
+
+#---------------------------------------------------------------------------------
+send: $(OUTPUT).elf
+	@echo sending ...
+	$(DEVKITPPC)/bin/wiiload $(OUTPUT).elf
 
 #---------------------------------------------------------------------------------
 else

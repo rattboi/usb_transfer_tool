@@ -25,7 +25,7 @@
 #define __OS_FUNCTIONS_H_
 
 #include <gctypes.h>
-#include "common/os_defs.h"
+#include "../common/os_defs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,7 +46,7 @@ extern "C" {
 #define EXPORT_VAR(type, var)           type var __attribute__((section(".data")));
 
 
-#define EXPORT_FUNC_WRITE(func, val)    *(u32*)(((u32)&func) + 0) = (u32)val
+#define EXPORT_FUNC_WRITE(func, val)    *(u32*)(((u32)&(func)) + 0) = (u32)val
 
 #define OS_FIND_EXPORT(handle, func)    funcPointer = 0;                                                                \
                                         OSDynLoad_FindExport(handle, 0, # func, &funcPointer);                          \

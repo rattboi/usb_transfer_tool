@@ -28,7 +28,7 @@
 extern "C" {
 #endif
 
-#include "common/fs_defs.h"
+#include "../common/fs_defs.h"
 
 void InitFSFunctionPointers(void);
 
@@ -48,10 +48,6 @@ extern int (* FSRemoveAsync)(void *pClient, void *pCmd, const char *path, int er
 
 extern int (* FSGetStat)(void *pClient, void *pCmd, const char *path, FSStat *stats, int errHandling);
 extern int (* FSGetStatAsync)(void *pClient, void *pCmd, const char *path, void *stats, int error, void *asyncParams);
-extern int (* FSRename)(void *pClient, void *pCmd, const char *oldPath, const char *newPath, int error);
-extern int (* FSRenameAsync)(void *pClient, void *pCmd, const char *oldPath, const char *newPath, int error, void *asyncParams);
-extern int (* FSRemove)(void *pClient, void *pCmd, const char *path, int error);
-extern int (* FSRemoveAsync)(void *pClient, void *pCmd, const char *path, int error, void *asyncParams);
 extern int (* FSFlushQuota)(void *pClient, void *pCmd, const char* path, int error);
 extern int (* FSFlushQuotaAsync)(void *pClient, void *pCmd, const char *path, int error, void *asyncParams);
 extern int (* FSGetFreeSpaceSize)(void *pClient, void *pCmd, const char *path, uint64_t *returnedFreeSize, int error);

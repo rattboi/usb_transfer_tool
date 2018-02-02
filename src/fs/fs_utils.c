@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "common/fs_defs.h"
-#include "dynamic_libs/fs_functions.h"
+#include "../common/fs_defs.h"
+#include "../dynamic_libs/fs_functions.h"
 
 
 int MountFS(void *pClient, void *pCmd, char **mount_path)
